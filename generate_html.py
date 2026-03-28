@@ -8,14 +8,17 @@ from jinja2 import Template
 def load_stock_list():
     df = pd.read_csv("stocks.csv", sep="\t")
 
-    # ⭐ 中文欄位轉英文（超重要）
+    # 去除欄位空白（防炸）
+    df.columns = df.columns.str.strip()
+
     df = df.rename(columns={
         "Ticker": "stock_id",
         "Name": "name"
     })
 
-    return df.to_dict(orient="records")
+    print("欄位:", df.columns.tolist())  # debug
 
+    return df.to_dict(orient="records")
 
 stock_list = load_stock_list()
 
