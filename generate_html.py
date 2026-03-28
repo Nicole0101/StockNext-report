@@ -103,7 +103,15 @@ with open("template.html", "r", encoding="utf-8") as f:
 
 html = template.render(stocks=results)
 
-with open("index.html", "w", encoding="utf-8") as f:
+from datetime import datetime
+
+now = datetime.now().strftime("%m%d%H%M")
+filename = f"持股_{now}.html"
+
+with open(filename, "w", encoding="utf-8") as f:
     f.write(html)
 
+# 同時更新 index.html（給網站用）
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html)
 print("✅ 完成 index.html")
