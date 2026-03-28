@@ -1,4 +1,4 @@
-pandas
-pandas-ta
-requests
+pandas==2.1.4
+pandas-ta==0.3.14b0
 jinja2
+requests
