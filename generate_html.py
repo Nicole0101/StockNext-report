@@ -112,8 +112,8 @@ with open(filename, "w", encoding="utf-8") as f:
     f.write(html)
 
 # 同時更新 index.html（給網站用）
-from datetime import datetime
-now = datetime.now().strftime("%m%d%H%M")
+from datetime import datetime, timedelta
+now = (datetime.utcnow() + timedelta(hours=8)).strftime("%m%d%H%M")
 filename = f"持股_{now}.html"
 # ⭐ 產生歷史檔
 with open(filename, "w", encoding="utf-8") as f:
