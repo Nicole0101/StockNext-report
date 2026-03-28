@@ -1,3 +1,4 @@
+import requests
 def get_stock_data(stock_id):
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{stock_id}.TW"
 
