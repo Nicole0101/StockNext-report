@@ -1,129 +1,148 @@
-<tbody>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台股技術分析報告</title>
 
+<style>
+body { background:#0d1117; color:#e6edf3; font-family:Arial; }
+.container { max-width:1200px; margin:auto; padding:20px; }
+
+.card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:15px; margin-bottom:15px; }
+
+h2 { margin-bottom:10px; }
+
+table { width:100%; border-collapse:collapse; }
+th { background:#1c2330; color:#8b949e; font-size:12px; }
+td,th { padding:10px; border-bottom:1px solid #30363d; text-align:center; }
+.name { text-align:left; font-weight:bold; }
+
+.up { color:#3fb950; }
+.dn { color:#f85149; }
+
+/* KD條 */
+.kd-bar { width:80px; height:6px; background:#222; border-radius:3px; position:relative; margin:auto; }
+.kd-dot { width:8px; height:8px; border-radius:50%; position:absolute; top:-1px; transform:translateX(-50%); }
+
+/* 布林 */
+.bb-bar { width:80px; height:6px; background:#222; border-radius:3px; position:relative; margin:auto; }
+.bb-dot { width:6px; height:10px; position:absolute; top:-2px; transform:translateX(-50%); }
+
+/* 訊號 */
+.sig { padding:3px 8px; border-radius:4px; font-size:11px; }
+.sig-buy { background:#3fb95033; color:#3fb950; }
+.sig-sell { background:#f8514933; color:#f85149; }
+.sig-hold { background:#8b949e33; color:#8b949e; }
+.sig-watch { background:#d2992233; color:#d29922; }
+
+.summary { display:flex; gap:10px; margin-bottom:10px; }
+.box { flex:1; padding:10px; border-radius:8px; text-align:center; }
+.buy { background:#3fb95022; }
+.sell { background:#f8514922; }
+.watch { background:#d2992222; }
+.hold { background:#8b949e22; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📊 台股技術分析報告</h2>
+
+<div class="summary">
+  <div class="box buy"><b id="buyCount"></b><br>買進</div>
+  <div class="box sell"><b id="sellCount"></b><br>賣出</div>
+  <div class="box watch"><b id="watchCount"></b><br>觀察</div>
+  <div class="box hold"><b id="holdCount"></b><br>中立</div>
+</div>
+
+<div class="card">
+<table>
+<thead>
 <tr>
-  <td>台泥</td>
-  <td>1101</td>
-  <td>22.8</td>
-  <td>台泥 技術面震盪，建議觀望</td>
+<th>名稱</th>
+<th>代碼</th>
+<th>價格</th>
+<th>漲跌</th>
+<th>KD</th>
+<th>布林</th>
+<th>訊號</th>
 </tr>
+</thead>
+<tbody id="stockBody"></tbody>
+</table>
+</div>
 
-<tr>
-  <td>統一</td>
-  <td>1216</td>
-  <td>72.0</td>
-  <td>統一 技術面震盪，建議觀望</td>
-</tr>
+</div>
 
-<tr>
-  <td>東陽</td>
-  <td>1319</td>
-  <td>83.4</td>
-  <td>東陽 技術面震盪，建議觀望</td>
-</tr>
+<script>
+const stocks = [];
+</script>
 
-<tr>
-  <td>勤美</td>
-  <td>1532</td>
-  <td>22.1</td>
-  <td>勤美 技術面震盪，建議觀望</td>
-</tr>
+<script>
 
-<tr>
-  <td>鴻海</td>
-  <td>2317</td>
-  <td>199.5</td>
-  <td>鴻海 技術面震盪，建議觀望</td>
-</tr>
+const sigLabel = { buy:"買進", sell:"賣出", hold:"中立", watch:"觀察" };
+const sigClass = { buy:"sig-buy", sell:"sig-sell", hold:"sig-hold", watch:"sig-watch" };
 
-<tr>
-  <td>台積電</td>
-  <td>2330</td>
-  <td>1820.0</td>
-  <td>台積電 技術面震盪，建議觀望</td>
-</tr>
+function kdColor(k){
+  if(k>70) return "#f85149";
+  if(k<30) return "#3fb950";
+  return "#d29922";
+}
 
-<tr>
-  <td>廣達</td>
-  <td>2382</td>
-  <td>289.0</td>
-  <td>廣達 技術面震盪，建議觀望</td>
-</tr>
+function bbPosition(bb){
+  if(bb.includes("上")) return 80;
+  if(bb.includes("下")) return 20;
+  return 50;
+}
 
-<tr>
-  <td>漢唐</td>
-  <td>2404</td>
-  <td>880.0</td>
-  <td>漢唐 技術面震盪，建議觀望</td>
-</tr>
+function renderRow(s){
 
-<tr>
-  <td>聯發科</td>
-  <td>2454</td>
-  <td>1585.0</td>
-  <td>聯發科 技術面震盪，建議觀望</td>
-</tr>
+  const chgClass = s.chg >= 0 ? "up":"dn";
+  const chgSign = s.chg >= 0 ? "+" : "";
 
-<tr>
-  <td>富邦金</td>
-  <td>2881</td>
-  <td>87.7</td>
-  <td>富邦金 技術面震盪，建議觀望</td>
-</tr>
+  return `
+  <tr>
+    <td class="name">${s.name}</td>
+    <td>${s.code}</td>
+    <td>${s.price}</td>
+    <td class="${chgClass}">${chgSign}${s.chg}</td>
 
-<tr>
-  <td>元大金</td>
-  <td>2885</td>
-  <td>45.3</td>
-  <td>元大金 技術面震盪，建議觀望</td>
-</tr>
+    <td>
+      ${s.k}/${s.d}
+      <div class="kd-bar">
+        <div class="kd-dot" style="left:${s.k}%; background:${kdColor(s.k)}"></div>
+      </div>
+    </td>
 
-<tr>
-  <td>中信金</td>
-  <td>2891</td>
-  <td>53.0</td>
-  <td>中信金 技術面震盪，建議觀望</td>
-</tr>
+    <td>
+      ${s.bb}
+      <div class="bb-bar">
+        <div class="bb-dot" style="left:${bbPosition(s.bb)}%; background:#58a6ff"></div>
+      </div>
+    </td>
 
-<tr>
-  <td>緯創</td>
-  <td>3231</td>
-  <td>127.0</td>
-  <td>緯創 技術面震盪，建議觀望</td>
-</tr>
+    <td><span class="sig ${sigClass[s.sig]}">${sigLabel[s.sig]}</span></td>
+  </tr>
+  `;
+}
 
-<tr>
-  <td>新日興</td>
-  <td>3376</td>
-  <td>207.5</td>
-  <td>新日興 技術面震盪，建議觀望</td>
-</tr>
+document.getElementById("stockBody").innerHTML =
+  stocks.map(renderRow).join("");
 
-<tr>
-  <td>創意</td>
-  <td>3443</td>
-  <td>2460.0</td>
-  <td>創意 技術面震盪，建議觀望</td>
-</tr>
+const buys = stocks.filter(s=>s.sig==='buy').length;
+const sells = stocks.filter(s=>s.sig==='sell').length;
+const watch = stocks.filter(s=>s.sig==='watch').length;
+const hold = stocks.filter(s=>s.sig==='hold').length;
 
-<tr>
-  <td>中租-KY</td>
-  <td>5871</td>
-  <td>113.0</td>
-  <td>中租-KY 技術面震盪，建議觀望</td>
-</tr>
+document.getElementById("buyCount").innerText = buys;
+document.getElementById("sellCount").innerText = sells;
+document.getElementById("watchCount").innerText = watch;
+document.getElementById("holdCount").innerText = hold;
 
-<tr>
-  <td>緯穎</td>
-  <td>6669</td>
-  <td>3395.0</td>
-  <td>緯穎 技術面震盪，建議觀望</td>
-</tr>
+</script>
 
-<tr>
-  <td>寶成</td>
-  <td>9904</td>
-  <td>28.9</td>
-  <td>寶成 技術面震盪，建議觀望</td>
-</tr>
-
-</tbody>
+</body>
+</html>
