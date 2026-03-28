@@ -18,8 +18,8 @@ th { background:#1c2330; color:#8b949e; font-size:12px; }
 td,th { padding:10px; border-bottom:1px solid #30363d; text-align:center; }
 .name { text-align:left; font-weight:bold; }
 
-.up { color:#3fb950; }
-.dn { color:#f85149; }
+.up { color:#f85149; }   /* 紅：上漲 */
+.dn { color:#3fb950; }   /* 綠：下跌 */
 
 /* KD條 */
 .kd-bar { width:80px; height:6px; background:#222; border-radius:3px; position:relative; margin:auto; }
@@ -84,7 +84,6 @@ const stocks = {{ stocks | tojson }};
 </script>
 
 <script>
-
 const sigLabel = { buy:"買進", sell:"賣出", hold:"中立", watch:"觀察" };
 const sigClass = { buy:"sig-buy", sell:"sig-sell", hold:"sig-hold", watch:"sig-watch" };
 
