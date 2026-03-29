@@ -24,7 +24,8 @@ def send_line(msg):
         print("LINE status:", res.status_code)
         print("LINE response:", res.text)
     except Exception as e:
-        print("LINE error:", e)    requests.post(url, headers=headers, json=data)
+        print("LINE error:", e)    
+        requests.post(url, headers=headers, json=data)
 
 if __name__ == "__main__":
     send_line("📊 今日股票報告已產生")
