@@ -115,6 +115,8 @@ with open(filename, "w", encoding="utf-8") as f:
 from datetime import datetime, timedelta
 now = (datetime.utcnow() + timedelta(hours=8)).strftime("%m%d%H%M")
 filename = f"持股_{now}.html"
+from line_push import send_line
+send_line(f"📊 股票報告已產生\n👉 {filename}")
 # ⭐ 產生歷史檔
 with open(filename, "w", encoding="utf-8") as f:
     f.write(html)
