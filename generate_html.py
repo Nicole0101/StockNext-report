@@ -133,11 +133,13 @@ elif sell_count > buy_count:
     market = "偏空 📉"
 else:
     market = "震盪 🤝"
-msg = f"""📊 台股盤後分析
-盤勢：{market}
-買進：{buy_count}
-賣出：{sell_count}
-觀察：{watch_count}
-中立：{hold_count}
-send_line(f"📊 股票報告已產生\n👉 {filename}")
-send_line(f"📊 最新報告\nhttps://Nicole0101.github.io/StockHolding-report/")
+msg = (
+    f"📊 台股盤後分析\n\n"
+    f"盤勢：{market}\n\n"
+    f"買進：{buy_count}\n"
+    f"賣出：{sell_count}\n"
+    f"觀察：{watch_count}\n"
+    f"中立：{hold_count}\n\n"
+    f"👉 https://Nicole0101.github.io/StockHolding-report/"
+)
+send_line(f"msg")
