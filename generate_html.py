@@ -7,6 +7,7 @@ from jinja2 import Template
 import os
 API_TOKEN = os.getenv("FINMIND_TOKEN")
 print("FINMIND TOKEN:", API_TOKEN)
+
 if API_TOKEN is None:
     print("⚠️ 沒有設定 FinMind TOKEN")
 def get_TWSE_data():
@@ -118,16 +119,31 @@ import os
 
 # ===== 讀大盤 =====
 TWSE = get_TWSE_data()
-latest = TWSE.iloc[-1]
-prev = TWSE.iloc[-2]
-index_value = latest["close"]
-chg = latest["close"] - prev["close"]
-chg_pct = (chg / prev["close"]) * 100
-if chg_pct > 0:
-    market_trend = "偏多 📈"
+if API_TOKEN is None:
+    print("⚠️ 沒有設定 FinMind TOKEN")
+    TWSE = None
+
+if TWSE is None or TWSE.empty or len(TWSE) < 2:
+    print("⚠️ 大盤資料為空，使用預設值")
+
+    index_value = 0
+    chg = 0
+    chg_pct = 0
+    market_trend = "資料不足"
+
+    summary_text = "⚠️ 無法取得台股資料（請檢查 TOKEN）"
+
 else:
-    market_trend = "偏空 📉"
-summary_text = f"""
+    latest = TWSE.iloc[-1]
+    prev = TWSE.iloc[-2]
+
+    index_value = latest["close"]
+    chg = latest["close"] - prev["close"]
+    chg_pct = (chg / prev["close"]) * 100
+
+    market_trend = "偏多 📈" if chg_pct > 0 else "偏空 📉"
+
+    summary_text = f"""
 加權指數：{round(index_value,2)}
 漲跌：{round(chg,2)} ({round(chg_pct,2)}%)
 盤勢：{market_trend}
