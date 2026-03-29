@@ -43,30 +43,6 @@ def ask_gpt_json(prompt):
         print("❌ GPT exception:", e)
         return "{}"
 
-
-try:
-    gpt_data = json.loads(gpt_raw)
-except:
-    print("GPT解析失敗:", gpt_raw)
-    gpt_data = {}
-
-#======fallback======
-gpt_summary = gpt_data.get("summary") or "市場震盪整理"
-gpt_trend = gpt_data.get("trend") or market_trend
-gpt_strong = gpt_data.get("strong_sector") or top_names
-gpt_weak = gpt_data.get("weak_sector") or weak_names
-gpt_buy = ", ".join(gpt_data.get("buy_list", [])) or top_names
-gpt_sell = ", ".join(gpt_data.get("sell_list", [])) or weak_names
-gpt_risk = gpt_data.get("risk") or "注意市場波動"
-
-#======自動重試=======
-import time
-for i in range(3):
-    gpt_raw = ask_gpt_json(prompt)
-    if gpt_raw != "{}":
-        break
-    time.sleep(2)
-
 # ===== FinMind =====
 API_TOKEN = "你的FinMindToken"
 
@@ -170,6 +146,7 @@ weak_names = ", ".join([s["name"] for s in sorted_stocks[-5:]])
 
 
 # ===== GPT =====
+# ===== GPT =====
 stock_summary = "\n".join([
     f"{s['name']} {s['chgPct']}%"
     for s in results[:10]
@@ -183,7 +160,8 @@ prompt = f"""
 "strong_sector": "",
 "weak_sector": "",
 "buy_list": [],
-"sell_list": []
+"sell_list": [],
+"risk": ""
 }}
 
 大盤漲跌：{round(chg_pct,2)}%
@@ -191,19 +169,35 @@ prompt = f"""
 {stock_summary}
 """
 
-gpt_raw = ask_gpt_json(prompt)
+# ===== GPT 呼叫（含重試）=====
+import time
 
+gpt_raw = "{}"
+
+for i in range(3):
+    try:
+        gpt_raw = ask_gpt_json(prompt)
+        if gpt_raw and gpt_raw != "{}":
+            break
+    except Exception as e:
+        print("GPT錯誤:", e)
+    time.sleep(2)
+
+# ===== 解析 =====
 try:
     gpt_data = json.loads(gpt_raw)
 except:
+    print("GPT解析失敗:", gpt_raw)
     gpt_data = {}
 
-gpt_summary = gpt_data.get("summary", "")
-gpt_trend = gpt_data.get("trend", "")
-gpt_strong = gpt_data.get("strong_sector", "")
-gpt_weak = gpt_data.get("weak_sector", "")
-gpt_buy = ", ".join(gpt_data.get("buy_list", []))
-gpt_sell = ", ".join(gpt_data.get("sell_list", []))
+# ===== fallback（關鍵🔥）=====
+gpt_summary = gpt_data.get("summary") or "市場震盪整理"
+gpt_trend = gpt_data.get("trend") or market_trend
+gpt_strong = gpt_data.get("strong_sector") or top_names
+gpt_weak = gpt_data.get("weak_sector") or weak_names
+gpt_buy = ", ".join(gpt_data.get("buy_list", [])) or top_names
+gpt_sell = ", ".join(gpt_data.get("sell_list", [])) or weak_names
+gpt_risk = gpt_data.get("risk") or "注意市場波動"
 
 
 # ===== HTML =====
