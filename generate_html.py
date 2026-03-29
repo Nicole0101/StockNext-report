@@ -98,7 +98,16 @@ import os
 # ===== 產HTML =====
 with open("template.html", "r", encoding="utf-8") as f:
     template = Template(f.read())
-html = template.render(stocks=results)
+    html = template.render(
+    stocks=results,
+    market={
+        "index": round(index_value, 2),
+        "chg": round(chg, 2),
+        "chg_pct": round(chg_pct, 2),
+        "trend": market_trend
+    },
+    summary=summary_text
+)
 
 # 使用統一的時間（UTC+8）
 now = (datetime.utcnow() + timedelta(hours=8)).strftime("%m%d%H%M")
