@@ -126,9 +126,7 @@ with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
 print("輸出檔案:", filename)
 
-
 import os
-
 # ===== 清理舊檔（只留最新3份）=====
 files = [f for f in os.listdir() if f.startswith("持股_") and f.endswith(".html")]
 
@@ -139,3 +137,22 @@ files.sort(reverse=True)
 for f in files[3:]:
     os.remove(f)
     print("刪除舊檔:", f)
+
+# LINE 推播
+def send_line_message(msg):
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": "Bearer YOUR_CHANNEL_ACCESS_TOKEN",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "to": "YOUR_USER_ID",
+        "messages": [
+            {"type": "text", "text": msg}
+        ]
+    }
+    requests.post(url, headers=headers, json=data)
+# 發送通知
+send_line_message(f"📊 台股報告已更新：{filename}")
+send_line_message(f"📊 最新報告\nhttps://Nicole0101.github.io/StockHolding-report/")
