@@ -308,12 +308,13 @@ elif sell_count > buy_count:
 else:
     market = "震盪 🤝"
 msg = (
-    f"📊 台股盤後分析\n\n"
-    f"盤勢：{market}\n\n"
-    f"買進：{buy_count}\n"
-    f"賣出：{sell_count}\n"
-    f"觀察：{watch_count}\n"
-    f"中立：{hold_count}\n\n"
+     f"📊 台股盤後分析\n\n"
+    f"{gpt_summary}\n\n"
+    f"📈 盤勢：{gpt_trend}\n\n"
+    f"🔥 強勢族群：{gpt_strong}\n"
+    f"⚠ 弱勢族群：{gpt_weak}\n\n"
+    f"📌 買進：{gpt_buy}\n"
+    f"📌 賣出：{gpt_sell}\n\n"
     f"👉 https://Nicole0101.github.io/StockHolding-report/"
 )
 send_line("msg")
