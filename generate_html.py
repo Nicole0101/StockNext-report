@@ -244,10 +244,6 @@ with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
 print("輸出:", filename)
 
-git add .
-git commit -m "update report"
-git push
-
 # ===== LINE =====
 from line_push import send_line
 
