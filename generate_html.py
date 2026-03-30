@@ -105,6 +105,18 @@ for s in stock_list:
         chgPct = (chg / prev["close"]) * 100
         amplitude = ((latest['high'] - latest['low']) / prev['close']) * 100
 
+
+        # ===== 波動策略 =====
+        k = latest['K']
+        if amplitude > 5 and k < 30:
+            strategy = "反彈🔥"
+        elif amplitude > 5 and k > 70:
+            strategy = "出貨⚠"
+        elif amplitude < 2:
+            strategy = "整理"
+        else:
+            strategy = "觀察"
+        
         results.append({
             "name": s["name"],
             "code": s["stock_id"],
@@ -112,6 +124,7 @@ for s in stock_list:
             "chg": round(chg, 2),
             "chgPct": round(chgPct, 2),
             "amp": round(amplitude, 2),
+            "strategy": strategy,
             "k": round(latest["K"], 1),
             "d": round(latest["D"], 1),
             "bb": get_bb_position(latest["close"], latest["BB_upper"], latest["BB_lower"]),
