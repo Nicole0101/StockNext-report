@@ -121,6 +121,7 @@ pre { white-space:pre-wrap; line-height:1.6; font-size:13px; }
 <th>KD</th>
 <th>布林</th>
 <th>訊號</th>
+<th>策略</th>
 </tr>
 </thead>
 <tbody id="stockBody"></tbody>
@@ -178,6 +179,7 @@ function renderRow(s){
     </td>
 
     <td><span class="sig ${sigClass[s.sig]}">${sigLabel[s.sig]}</span></td>
+    <td>${s.strategy}</td>
   </tr>
   `;
 }
