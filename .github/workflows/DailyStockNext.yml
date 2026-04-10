@@ -1,4 +1,4 @@
-name: DailyStockNextRpt
+name: GoldRpt
 
 on:
   schedule:
