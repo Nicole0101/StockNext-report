@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-goldcsv_dir = os.path.join(base_dir, "Goldcsv")
+goldcsv_dir = os.path.join(base_dir, "Gold_csv")
 gold_dir = base_dir
 
 output_in_goldcsv = os.path.join(goldcsv_dir, "Gold.csv")
