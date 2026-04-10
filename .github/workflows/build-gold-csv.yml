@@ -5,7 +5,7 @@ on:
   push:
     paths:
       - "Git/Gold/Gold_csv/**"
-      - "build_gold.py"
+      - "python GenGold_csv.py"
 
 jobs:
   build:
@@ -24,7 +24,7 @@ jobs:
         run: pip install pandas
 
       - name: Run script
-        run: python build_gold.py
+        run: python GenGold_csv.py
 
       - name: Commit Gold.csv
         run: |
