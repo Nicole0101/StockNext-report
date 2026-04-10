@@ -1,25 +1,22 @@
 import os
-import shutil
 import pandas as pd
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-goldcsv_dir = os.path.join(base_dir, "csv")
-gold_dir = base_dir
-
-output_in_goldcsv = os.path.join(goldcsv_dir, "Gold.csv")
-output_in_gold = os.path.join(gold_dir, "Gold.csv")
+allcsv_dir = os.path.join(base_dir, "Allcsv")
+output_gold = os.path.join(base_dir, "Gold.csv")
 
 all_rows = []
 
 print("cwd =", os.getcwd(), flush=True)
 print("script dir =", base_dir, flush=True)
-print("goldcsv_dir =", goldcsv_dir, flush=True)
+print("allcsv_dir =", allcsv_dir, flush=True)
+print("output_gold =", output_gold, flush=True)
 
-if not os.path.isdir(goldcsv_dir):
-    raise FileNotFoundError(f"csv directory not found: {goldcsv_dir}")
+if not os.path.isdir(allcsv_dir):
+    raise FileNotFoundError(f"Allcsv directory not found: {allcsv_dir}")
 
-for filename in os.listdir(goldcsv_dir):
-    file_path = os.path.join(goldcsv_dir, filename)
+for filename in os.listdir(allcsv_dir):
+    file_path = os.path.join(allcsv_dir, filename)
 
     if not os.path.isfile(file_path):
         continue
@@ -30,6 +27,9 @@ for filename in os.listdir(goldcsv_dir):
 
     try:
         df = pd.read_csv(file_path, sep="\t", encoding="utf-8-sig")
+
+        if len(df.columns) == 1:
+            df = pd.read_csv(file_path, encoding="utf-8-sig")
 
         if {"Ticker", "Name"}.issubset(df.columns):
             temp = df[["Ticker", "Name"]].copy()
@@ -50,7 +50,9 @@ for filename in os.listdir(goldcsv_dir):
             (temp["Name"].str.lower() != "nan")
         ]
 
-        all_rows.append(temp)
+        if not temp.empty:
+            all_rows.append(temp)
+
         print(f"loaded: {filename}, rows={len(temp)}", flush=True)
 
     except Exception as e:
@@ -63,16 +65,14 @@ if all_rows:
     result = (
         result
         .drop_duplicates(subset=["Ticker"], keep="first")
-        .sort_values(by=["Ticker_num", "Ticker"], ascending=[True, True])
+        .sort_values(by=["Ticker_num", "Ticker"], ascending=[True, True], na_position="last")
         .drop(columns=["Ticker_num"])
         .reset_index(drop=True)
     )
 
-    result.to_csv(output_in_goldcsv, sep="\t", index=False, encoding="utf-8-sig")
-    shutil.copy2(output_in_goldcsv, output_in_gold)
+    result.to_csv(output_gold, sep="\t", index=False, encoding="utf-8-sig")
 
-    print(f"written: {output_in_goldcsv}", flush=True)
-    print(f"copied: {output_in_gold}", flush=True)
+    print(f"written: {output_gold}", flush=True)
     print(f"rows: {len(result)}", flush=True)
 else:
     print("no data", flush=True)
