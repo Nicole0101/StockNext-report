@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-goldcsv_dir = os.path.join(base_dir, "Goldcsv")
+goldcsv_dir = os.path.join(base_dir, "csv")
 gold_dir = base_dir
 
 output_in_goldcsv = os.path.join(goldcsv_dir, "Gold.csv")
@@ -16,7 +16,7 @@ print("script dir =", base_dir, flush=True)
 print("goldcsv_dir =", goldcsv_dir, flush=True)
 
 if not os.path.isdir(goldcsv_dir):
-    raise FileNotFoundError(f"Goldcsv directory not found: {goldcsv_dir}")
+    raise FileNotFoundError(f"csv directory not found: {goldcsv_dir}")
 
 for filename in os.listdir(goldcsv_dir):
     file_path = os.path.join(goldcsv_dir, filename)
