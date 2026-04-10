@@ -23,7 +23,7 @@ jobs:
         run: pip install pandas
 
       - name: Run build_gold.py
-        run: python build_gold.py
+        run: python Gencsv.py
 
       - name: Check generated files
         run: |
