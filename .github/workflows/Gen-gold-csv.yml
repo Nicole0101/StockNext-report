@@ -1,11 +1,11 @@
-name: Build Gold CSV
+name: Gen Gold CSV
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "Git/Gold/Gold_csv/**"
-      - "python GenGold_csv.py"
+      - "Goldcsv/**"
+      - "GenGold_csv.py"
 
 jobs:
   build:
@@ -26,10 +26,16 @@ jobs:
       - name: Run script
         run: python GenGold_csv.py
 
+      - name: Check files
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 3 -type f | sort
+
       - name: Commit Gold.csv
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Git/Gold/Gold.csv Git/Gold/Goldcsv/Gold.csv
+          git add Gold.csv Goldcsv/Gold.csv
           git diff --cached --quiet || git commit -m "Auto update Gold.csv"
           git push
