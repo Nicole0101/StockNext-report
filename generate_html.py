@@ -60,7 +60,7 @@ def get_TWSE_data():
 
 # ===== 讀CSV =====
 def load_stock_list():
-    df = pd.read_csv("StockNext.CSV", sep="\t", encoding="utf-8-sig")
+    df = pd.read_csv("StockNext.csv", sep="\t", encoding="utf-8-sig")
     df = df.rename(columns={"Ticker": "stock_id", "Name": "name"})
     return df.to_dict(orient="records")
 
