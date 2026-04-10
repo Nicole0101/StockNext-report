@@ -3,7 +3,7 @@ import shutil
 import pandas as pd
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-goldcsv_dir = os.path.join(base_dir, "Gold_csv")
+goldcsv_dir = os.path.join(base_dir, "Goldcsv")
 gold_dir = base_dir
 
 output_in_goldcsv = os.path.join(goldcsv_dir, "Gold.csv")
@@ -11,9 +11,9 @@ output_in_gold = os.path.join(gold_dir, "Gold.csv")
 
 all_rows = []
 
-print("cwd =", os.getcwd())
-print("script dir =", base_dir)
-print("goldcsv_dir =", goldcsv_dir)
+print("cwd =", os.getcwd(), flush=True)
+print("script dir =", base_dir, flush=True)
+print("goldcsv_dir =", goldcsv_dir, flush=True)
 
 if not os.path.isdir(goldcsv_dir):
     raise FileNotFoundError(f"Goldcsv directory not found: {goldcsv_dir}")
@@ -23,10 +23,8 @@ for filename in os.listdir(goldcsv_dir):
 
     if not os.path.isfile(file_path):
         continue
-
     if filename.lower() == "gold.csv":
         continue
-
     if not filename.lower().endswith((".csv", ".txt")):
         continue
 
@@ -35,12 +33,11 @@ for filename in os.listdir(goldcsv_dir):
 
         if {"Ticker", "Name"}.issubset(df.columns):
             temp = df[["Ticker", "Name"]].copy()
-            temp.columns = ["Ticker", "Name"]
         elif {"代碼", "名稱"}.issubset(df.columns):
             temp = df[["代碼", "名稱"]].copy()
             temp.columns = ["Ticker", "Name"]
         else:
-            print(f"skip: {filename}, columns={df.columns.tolist()}")
+            print(f"skip: {filename}, columns={df.columns.tolist()}", flush=True)
             continue
 
         temp["Ticker"] = temp["Ticker"].astype(str).str.strip()
@@ -54,10 +51,10 @@ for filename in os.listdir(goldcsv_dir):
         ]
 
         all_rows.append(temp)
-        print(f"loaded: {filename}, rows={len(temp)}")
+        print(f"loaded: {filename}, rows={len(temp)}", flush=True)
 
     except Exception as e:
-        print(f"failed: {filename}, error={e}")
+        print(f"failed: {filename}, error={e}", flush=True)
 
 if all_rows:
     result = pd.concat(all_rows, ignore_index=True)
@@ -74,8 +71,8 @@ if all_rows:
     result.to_csv(output_in_goldcsv, sep="\t", index=False, encoding="utf-8-sig")
     shutil.copy2(output_in_goldcsv, output_in_gold)
 
-    print(f"written: {output_in_goldcsv}")
-    print(f"copied: {output_in_gold}")
-    print(f"rows: {len(result)}")
+    print(f"written: {output_in_goldcsv}", flush=True)
+    print(f"copied: {output_in_gold}", flush=True)
+    print(f"rows: {len(result)}", flush=True)
 else:
-    print("no data")
+    print("no data", flush=True)
