@@ -61,7 +61,7 @@ def build_strings(data):
 def main():
     # 1. 讀取清單與執行分析
     try:
-        df = pd.read_csv("stocks.csv", sep="\t", encoding="utf-8-sig")
+        df = pd.read_csv("Gold.csv", sep="\t", encoding="utf-8-sig")
         stock_list = df.rename(
             columns={"Ticker": "stock_id", "Name": "name"}
         ).to_dict(orient="records")
