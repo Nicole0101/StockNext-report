@@ -79,10 +79,11 @@ def main():
     # 2. 格式化資料與時間處理
     data = format_output(results)
     text_data = build_strings(data)
-    print("sample stock keys:", data["stocks"][0].keys() if data["stocks"] else [])
+    print("sample stock keys:", data["stocks"]
+          [0].keys() if data["stocks"] else [])
     now_dt = datetime.utcnow() + timedelta(hours=8)
     now_str = now_dt.strftime("%m%d%H%M")
-    filename = f"持股_{now_str}.html"
+    filename = f"黃金股_{now_str}.html"
 
     # 3. 設定 GitHub Pages 連結
     repo_full = os.getenv("GITHUB_REPOSITORY",
@@ -94,7 +95,7 @@ def main():
 
     # ===== 檔名 =====
     now = (datetime.utcnow() + timedelta(hours=8)).strftime("%m%d%H%M")
-    filename = f"持股_{now}.html"
+    filename = f"黃金股_{now}.html"
 
     # ===== URL =====
     if branch == "main":
@@ -115,7 +116,7 @@ def main():
             selloff_list=text_data["selloff_str"],
             generated_time=now_dt.strftime("%Y-%m-%d %H:%M")
         )
-        
+
         # 寫入當前檔案與 index.html
         for f_name in [filename, "index.html"]:
             with open(f_name, "w", encoding="utf-8") as f:
@@ -141,7 +142,7 @@ def send_line_notify(data, file_url):
         weak5 = [f"{s['name']}({s['chgPct']}%)" for s in stocks[-5:]]
         msg = f"""
 
-📊 (持股)價值投資分析報告
+📊 (黃金股)價值投資分析報告
 
 🔥 強勢股
 {chr(10).join(top5)}
