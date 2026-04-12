@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>(黃金股)技術分析報告</title>
+  <title>{{report_title}}</title>
 
   <style>
     * {
@@ -113,33 +113,6 @@
 
     .dn {
       color: #3fb950;
-    }
-
-    .kd-bar,
-    .bb-bar {
-      width: min(80px, 18vw);
-      height: 6px;
-      background: #222;
-      border-radius: 3px;
-      margin: 4px auto 0;
-      position: relative;
-    }
-
-    .kd-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      position: absolute;
-      top: -1px;
-      transform: translateX(-50%);
-    }
-
-    .bb-dot {
-      width: 6px;
-      height: 10px;
-      position: absolute;
-      top: -2px;
-      transform: translateX(-50%);
     }
 
     .sig {
@@ -358,8 +331,9 @@
 <body>
 
   <div class="container">
-    <h2>(黃金股)技術分析報告</h2>
-
+    <h2>{{report_title}}</h2>
+    <p>{{ report_subtitle }}</p>
+    <p>產生時間：{{ generated_time }}</p>
     <div class="summary">
       <div class="box buy"><b id="buyCount"></b><br>買入</div>
       <div class="box sell"><b id="sellCount"></b><br>出貨</div>
@@ -444,12 +418,6 @@
       return Number(val) > 0 ? "up" : "dn";
     }
 
-    function kdColor(k) {
-      if (k > 75) return "#f85149";
-      if (k < 25) return "#3fb950";
-      return "#d29922";
-    }
-
     function renderRow(s) {
       const chgPct = Number(s.chgPct ?? 0);
       const chgClass = chgPct >= 0 ? "up" : "dn";
@@ -487,16 +455,10 @@
 
           <td>
             ${fmt(s.k)}/${fmt(s.d)}
-            <div class="kd-bar">
-              <div class="kd-dot" style="left:${isNil(s.k) ? 50 : s.k}%; background:${kdColor(Number(isNil(s.k) ? 50 : s.k))}"></div>
-            </div>
           </td>
 
           <td class="col-md">
             ${fmt(s.bb_pct, "%")}
-            <div class="bb-bar">
-              <div class="bb-dot" style="left:${isNil(s.bb_pct) ? 50 : s.bb_pct}%; background:#58a6ff"></div>
-            </div>
           </td>
 
           <td class="col-lg ${distClass(s.bias6)}">
