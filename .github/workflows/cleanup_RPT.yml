@@ -1,0 +1,30 @@
+name: Cleanup Reports(WF)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ✅ 新增：刪除 10 分鐘前的 workflow runs
+      - name: Delete old workflow runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Deleting workflow runs older than 10 minutes..."
+
+          NOW=$(date -u +%s)
+          TEN_MIN_AGO=$((NOW - 600))
+
+          gh run list --limit 100 --json databaseId,createdAt -q '.[] | "\(.databaseId) \(.createdAt)"' | while read id created; do
+            CREATED_TS=$(date -d "$created" +%s)
+
+            if [ "$CREATED_TS" -lt "$TEN_MIN_AGO" ]; then
+              echo "Deleting run $id (created at $created)"
+              gh run delete $id
+            fi
+          done
