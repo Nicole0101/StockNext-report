@@ -196,6 +196,7 @@
     .metric-sub {
       font-size: clamp(10px, 0.9vw, 11px);
       display: flex;
+      flex-direction: column;
       justify-content: center;
       gap: 6px;
     }
@@ -422,7 +423,7 @@
         <div class="metric">
           <div class="metric-main">${fmt(value)}</div>
           <div class="metric-sub">
-            <small class="${colorClass(qoq)}">${arrow(qoq)}${fmt(qoq)}</small><br>
+            <small class="${colorClass(qoq)}">${arrow(qoq)}${fmt(qoq)}</small>
             <small class="${colorClass(yoy)}">${arrow(yoy)}${fmt(yoy)}</small>
           </div>
         </div>`;
