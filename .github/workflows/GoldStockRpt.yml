@@ -2,7 +2,7 @@ name: GoldRpt
 
 on:
   schedule:
-    - cron: "30 5 * * 1-5"  # 🇹🇼 15:30（UTC+8）
+    - cron: "0 7 * * 1-5"  # 🇹🇼 15:00（UTC+8）
   workflow_dispatch:
 
 env:
