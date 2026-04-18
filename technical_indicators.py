@@ -36,6 +36,39 @@ def add_indicators(df):
         return df
 
 
+def get_kd_trend(df):
+    try:
+        last3 = df.tail(3)
+
+        if len(last3) < 3:
+            return {"kd_3d_up": None, "kd_trend": None}
+
+        k_vals = last3['K'].values
+
+        # 避免 NaN
+        if pd.isna(k_vals).any():
+            return {"kd_3d_up": None, "kd_trend": None}
+
+        up = k_vals[2] > k_vals[1] > k_vals[0]
+        down = k_vals[2] < k_vals[1] < k_vals[0]
+
+        if up:
+            trend = "↗"
+        elif down:
+            trend = "↘"
+        else:
+            trend = "→"
+
+        return {
+            "kd_3d_up": bool(up) if up is not None else None,
+            "kd_trend": trend
+        }
+
+    except Exception as e:
+        print(f"❌ KD trend error: {e}")
+        return {"kd_3d_up": None, "kd_trend": None}
+
+
 def get_MABias(df):
     if len(df) < 90:
         return {
@@ -72,6 +105,38 @@ def get_MABias(df):
             bias_90.max(), 2) if bias_90.notna().any() else None
 
     return stats
+
+
+def get_bb_trend(df):
+    last3 = df.tail(3)
+
+    if len(last3) < 3:
+        return {"bb_3d_up": None, "bb_trend": None}
+
+    def calc_pct(row):
+        if pd.notna(row['BB_upper']) and pd.notna(row['BB_lower']) and row['BB_upper'] != row['BB_lower']:
+            return (row['close'] - row['BB_lower']) / (row['BB_upper'] - row['BB_lower']) * 100
+        return None
+
+    pcts = last3.apply(calc_pct, axis=1).values
+
+    if pd.isna(pcts).any():
+        return {"bb_3d_up": None, "bb_trend": None}
+
+    up = pcts[2] > pcts[1] > pcts[0]
+    down = pcts[2] < pcts[1] < pcts[0]
+
+    if up:
+        trend = "↗"
+    elif down:
+        trend = "↘"
+    else:
+        trend = "→"
+
+    return {
+        "bb_3d_up": bool(up) if up is not None else None,
+        "bb_trend": trend
+    }
 
 
 def safe_pos(value, low, high):
