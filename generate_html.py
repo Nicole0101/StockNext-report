@@ -66,9 +66,13 @@ def main():
         csv_file = config.CSV_FILE
         report_title = config.REPORT_TITLE
         output_file = config.OUTPUT_FILE
-        df = pd.read_csv(csv_file, encoding="utf-8-sig")
+        df = pd.read_csv(csv_file, sep="\t", encoding="utf-8-sig", dtype=str)
+        df.columns = df.columns.str.strip()
+        stock_list = df.rename(columns={"Ticker": "stock_id", "Name": "name"}).to_dict(orient="records")      
         print(df.shape)
         print(df.columns.tolist())
+        print(df.head())
+        print(df.tail())
 
         stock_list = df.rename(
             columns={"Ticker": "stock_id", "Name": "name"}
