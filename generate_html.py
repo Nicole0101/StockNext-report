@@ -11,7 +11,8 @@ from main import get_full_stock_analysis  # 確保 data.py 已準備好
 
 
 def format_output(results):
-    results = [r for r in results if r and r.get("code")]
+  
+    results = [r for r in results if r]
     for r in results:
         y = 0
         if isinstance(r.get("yield"), dict):
