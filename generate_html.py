@@ -11,39 +11,37 @@ from main import get_full_stock_analysis  # 確保 data.py 已準備好
 
 
 def format_output(results):
-  
     results = [r for r in results if r]
-    for r in results:
-        y = 0
-        if isinstance(r.get("yield"), dict):
-            y = r["yield"].get("yield", 0)
-        elif isinstance(r.get("yield"), (int, float)):
-            y = r["yield"]
 
-        e = r.get("eps_est") if isinstance(
-            r.get("eps_est"), (int, float)) else 0
-        p = r.get("per_est") if isinstance(
-            r.get("per_est"), (int, float)) else 0
+    valid_results = [r for r in results if isinstance(r.get("chgPct"), (int, float))]
+    invalid_results = [r for r in results if not isinstance(r.get("chgPct"), (int, float))]
 
-        # 若外部沒給 score，補 0 避免排序報錯
-        if "score" not in r:
-            r["score"] = 0
+    sorted_by_score = sorted(
+        valid_results,
+        key=lambda x: x.get("score", -999999),
+        reverse=True
+    )
 
-    sorted_by_score = sorted(results, key=lambda x: x["score"], reverse=True)
-    sorted_by_chg = sorted(results, key=lambda x: x["chgPct"], reverse=True)
+    sorted_by_chg = sorted(
+        valid_results,
+        key=lambda x: x.get("chgPct", -999999),
+        reverse=True
+    )
+
+    # 把無資料股接在最後
+    stocks = sorted_by_chg + invalid_results
 
     return {
-        "stocks": sorted_by_chg,
+        "stocks": stocks,
         "top_stocks": sorted_by_score[:5],
         "hot_stocks": sorted_by_chg[:5],
-        "weak_stocks": sorted_by_chg[-5:],
-        "rebound_list": [s for s in results if "反彈" in s.get("strategy", "")],
-        "selloff_list": [s for s in results if "出貨" in s.get("strategy", "")],
-        "buy_signal_list": [s for s in results if s.get("sig") == 1],
-        "volume_up_list": [s for s in results if s.get("volume_ok")],
-        "bottom_pick_list": [s for s in results if s.get("entry_note") == "抄底"]
+        "weak_stocks": sorted_by_chg[-5:] if sorted_by_chg else [],
+        "rebound_list": [s for s in valid_results if "反彈" in s.get("strategy", "")],
+        "selloff_list": [s for s in valid_results if "出貨" in s.get("strategy", "")],
+        "buy_signal_list": [s for s in valid_results if s.get("sig") == 1],
+        "volume_up_list": [s for s in valid_results if s.get("volume_ok")],
+        "bottom_pick_list": [s for s in valid_results if s.get("entry_note") == "抄底"]
     }
-
 
 def build_strings(data):
     def safe_join(lst):
