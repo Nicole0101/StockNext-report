@@ -347,8 +347,18 @@ def process_stock(s):
 
 def get_full_stock_analysis(stock_list):
     results = []
-    for s in stock_list:
-        data = process_stock(s)
-        if data:
-            results.append(data)
+    for i, s in enumerate(stock_list, 1):
+        try:
+            print(f"處理中 {i}/{len(stock_list)}: {s}")
+            data = process_stock(s)
+
+            if data:
+                results.append(data)
+            else:
+                print(f"⚠️ 無資料: {s}")
+
+        except Exception as e:
+            print(f"❌ 處理失敗: {s}, error={e}")
+            continue
+
     return results
