@@ -84,23 +84,50 @@ def get_per_pbr_cached(stock_id):
 
 
 def process_stock(s):
+    base = {
+        "name": s["name"],
+        "code": s["stock_id"],
+        "price": None,
+        "chg": None,
+        "chgPct": None,
+        "amp": None,
+        "sig": 0,
+        "signal": "資料異常",
+        "score": 0,
+        "signal_text": "資料異常",
+        "reason": "",
+        "entry_note": "",
+    }
+
     try:
         df = get_stock_data(s["stock_id"])
-        if df is None or df.empty or len(df) < 90:
-            return {
-                "name": s["name"],
-                "code": s["stock_id"],
-                "price": None,
-                "chg": None,
-                "chgPct": None,
-                "amp": None,
-                "sig": 0,
+
+        if df is None:
+            x = base.copy()
+            x.update({
                 "signal": "無資料",
-                "score": 0,
+                "signal_text": "查無資料",
+                "reason": "get_stock_data 回傳 None",
+            })
+            return x
+
+        if df.empty:
+            x = base.copy()
+            x.update({
+                "signal": "無資料",
+                "signal_text": "查無資料",
+                "reason": "股價資料為空",
+            })
+            return x
+
+        if len(df) < 90:
+            x = base.copy()
+            x.update({
+                "signal": "資料不足",
                 "signal_text": "資料不足",
-                "reason": "查無股價資料或歷史資料不足90日",
-                "entry_note": "",
-            }
+                "reason": f"歷史資料不足90日，僅有 {len(df)} 筆",
+            })
+            return x
 
         df = add_indicators(df)
         latest, prev = df.iloc[-1], df.iloc[-2]
@@ -116,17 +143,31 @@ def process_stock(s):
         eps_res = eps_res + (None,) * (6 - len(eps_res))
 
         rev = get_revenue_trend(s["stock_id"]) or {}
-        profit_res = get_profit_ratio(s["stock_id"]) or {
-            "current": {},
-            "qoq": {},
-            "yoy_diff": {},
-        }
+
+        try:
+            profit_res = get_profit_ratio(s["stock_id"]) or {
+                "current": {},
+                "qoq": {},
+                "yoy_diff": {},
+            }
+        except Exception as e:
+            print(f"❌ profit source error {s['stock_id']}: {e}")
+            profit_res = {
+                "current": {},
+                "qoq": {},
+                "yoy_diff": {},
+            }
 
         cur_g, qoq_g, yoy_g = extract_metric(profit_res, "gross")
         cur_o, qoq_o, yoy_o = extract_metric(profit_res, "op")
         cur_n, qoq_n, yoy_n = extract_metric(profit_res, "net")
 
-        yield_raw = get_dividend_yield(s["stock_id"], latest["close"])
+        try:
+            yield_raw = get_dividend_yield(s["stock_id"], latest["close"])
+        except Exception as e:
+            print(f"❌ dividend error {s['stock_id']}: {e}")
+            yield_raw = None
+
         dividend = None
         yield_value = None
         if isinstance(yield_raw, dict):
@@ -135,8 +176,17 @@ def process_stock(s):
         elif isinstance(yield_raw, (int, float)):
             yield_value = float(yield_raw)
 
-        per_pbr_stats = get_per_pbr_cached(s["stock_id"]) or {}
-        ma_stats = get_MABias(df) or {}
+        try:
+            per_pbr_stats = get_per_pbr_cached(s["stock_id"]) or {}
+        except Exception as e:
+            print(f"❌ per/pbr error {s['stock_id']}: {e}")
+            per_pbr_stats = {}
+
+        try:
+            ma_stats = get_MABias(df) or {}
+        except Exception as e:
+            print(f"❌ ma bias error {s['stock_id']}: {e}")
+            ma_stats = {}
 
         safe_ma_stats = {}
         for k2, v2 in ma_stats.items():
@@ -199,33 +249,37 @@ def process_stock(s):
         bias50_min = safe_ma_stats.get("bias50_min")
         bias50_max = safe_ma_stats.get("bias50_max")
 
-        signal_res = get_tech_signal(
-            close=close,
-            chgPct=chgPct,
-            amp=amp,
-            volume=volume,
-            prev_volume=prev_volume,
-            prev2_volume=prev2_volume,
-            k=k,
-            d=d,
-            prev_k=prev_k,
-            prev_d=prev_d,
-            k_trend=k_trend,
-            d_trend=d_trend,
-            bb_pct=bb_pct,
-            bias6=bias6,
-            bias18=bias18,
-            bias50=bias50,
-            bias6_min=bias6_min,
-            bias6_max=bias6_max,
-            bias18_min=bias18_min,
-            bias18_max=bias18_max,
-            bias50_min=bias50_min,
-            bias50_max=bias50_max,
-            ma18=ma18,
-            prev_ma18=prev_ma18,
-            prev_close=prev_close,
-        ) or {"signal": "觀察", "reason": "", "signal_text": "觀察"}
+        try:
+            signal_res = get_tech_signal(
+                close=close,
+                chgPct=chgPct,
+                amp=amp,
+                volume=volume,
+                prev_volume=prev_volume,
+                prev2_volume=prev2_volume,
+                k=k,
+                d=d,
+                prev_k=prev_k,
+                prev_d=prev_d,
+                k_trend=k_trend,
+                d_trend=d_trend,
+                bb_pct=bb_pct,
+                bias6=bias6,
+                bias18=bias18,
+                bias50=bias50,
+                bias6_min=bias6_min,
+                bias6_max=bias6_max,
+                bias18_min=bias18_min,
+                bias18_max=bias18_max,
+                bias50_min=bias50_min,
+                bias50_max=bias50_max,
+                ma18=ma18,
+                prev_ma18=prev_ma18,
+                prev_close=prev_close,
+            ) or {"signal": "觀察", "reason": "", "signal_text": "觀察"}
+        except Exception as e:
+            print(f"❌ signal error {s['stock_id']}: {e}")
+            signal_res = {"signal": "觀察", "reason": f"signal error: {e}", "signal_text": "觀察"}
 
         signal = signal_res.get("signal", "觀察")
         reason = signal_res.get("reason", "")
@@ -329,21 +383,13 @@ def process_stock(s):
 
     except Exception as e:
         print(f"❌ process error {s['stock_id']}: {e}")
-        return {
-            "name": s["name"],
-            "code": s["stock_id"],
-            "price": None,
-            "chg": None,
-            "chgPct": None,
-            "amp": None,
-            "sig": 0,
+        x = base.copy()
+        x.update({
             "signal": "資料異常",
-            "score": 0,
             "signal_text": "資料異常",
-            "reason": str(e),
-            "entry_note": "",
-        }
-
+            "reason": f"process error: {e}",
+        })
+        return x
 
 def get_full_stock_analysis(stock_list):
     results = []
@@ -352,7 +398,7 @@ def get_full_stock_analysis(stock_list):
         data = process_stock(s)
         results.append(data)
 
-        if data.get("signal") in ("無資料", "資料異常"):
+        if data.get("signal") in ("無資料", "資料不足", "資料異常"):
             print(f"⚠️ 保留異常資料: {s} -> {data.get('reason')}")
 
     return results
