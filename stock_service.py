@@ -1,17 +1,21 @@
+import os
 import pandas as pd
-from data_sources import get_stock_data, get_revenue_raw, get_per_pbr_90d_stats
+import numpy as np
+
+from data_sources import get_stock_data
 from financial_analysis import (
     calc_eps_score,
     calc_margin_score,
     calc_trend_score,
-    extract_metric,
     get_dividend_yield,
-    get_eps_analysis,
-    get_profit_ratio,
 )
 from signals import get_tech_signal
 from technical_indicators import add_indicators, get_kd_trend, get_bb_trend, get_MABias
-import numpy as np
+
+
+STATIC_CSV_PATH = os.getenv("STATIC_CSV_FILE", "AllStatic.csv")
+_STATIC_MAP_CACHE = None
+_STATIC_MAP_MTIME = None
 
 
 def get_price_90d_high_low(df):
@@ -31,62 +35,78 @@ def get_price_90d_high_low(df):
     }
 
 
-def get_revenue_trend(stock_id):
+def load_static_map(static_csv_path=STATIC_CSV_PATH, force_reload=False):
+    global _STATIC_MAP_CACHE, _STATIC_MAP_MTIME
+
     try:
-        data = get_revenue_raw(stock_id)
-        if not data:
-            return None
+        if not os.path.exists(static_csv_path):
+            print(f"⚠️ 找不到靜態資料檔: {static_csv_path}")
+            return {}
 
-        df = pd.DataFrame(data)
+        mtime = os.path.getmtime(static_csv_path)
+        if (not force_reload) and _STATIC_MAP_CACHE is not None and _STATIC_MAP_MTIME == mtime:
+            return _STATIC_MAP_CACHE
 
-        if "revenue" not in df.columns:
-            if "value" in df.columns:
-                df["revenue"] = df["value"]
-            else:
-                return None
+        df = pd.read_csv(static_csv_path, encoding="utf-8-sig", dtype={"stock_id": str})
+        df.columns = df.columns.str.strip()
 
-        df["date"] = pd.to_datetime(df["date"])
-        df["revenue"] = pd.to_numeric(df["revenue"], errors="coerce")
-        df = df.sort_values("date").dropna()
+        if "stock_id" not in df.columns:
+            print(f"⚠️ AllStatic.csv 缺少 stock_id 欄位: {static_csv_path}")
+            return {}
 
-        if len(df) < 13:
-            return None
+        # 將 NaN 轉為 None，方便後續使用
+        df = df.where(pd.notna(df), None)
 
-        curr = df.iloc[-1]["revenue"]
-        prev_m = df.iloc[-2]["revenue"]
-        prev_q = df.iloc[-4]["revenue"]
-        prev_y = df.iloc[-13]["revenue"]
+        static_map = {}
+        for _, row in df.iterrows():
+            stock_id = str(row["stock_id"]).strip()
+            static_map[stock_id] = row.to_dict()
 
-        def pct(a, b):
-            return (a - b) / b * 100 if b else None
-
-        return {
-            "rev": round(curr / 1e8, 2),
-            "mom": round(pct(curr, prev_m), 2),
-            "qoq": round(pct(curr, prev_q), 2),
-            "yoy": round(pct(curr, prev_y), 2),
-        }
+        _STATIC_MAP_CACHE = static_map
+        _STATIC_MAP_MTIME = mtime
+        print(f"✅ 已載入靜態資料: {static_csv_path}, 筆數={len(static_map)}")
+        return static_map
 
     except Exception as e:
-        print(f"❌ revenue error {stock_id}: {e}")
+        print(f"❌ 讀取 AllStatic.csv 失敗: {e}")
+        return {}
+
+
+def to_float_or_none(v):
+    if v is None:
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except Exception:
+        pass
+    try:
+        return float(v)
+    except Exception:
         return None
 
 
-PER_PBR_CACHE = {}
+def to_int_or_none(v):
+    if v is None:
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except Exception:
+        pass
+    try:
+        return int(v)
+    except Exception:
+        return None
 
 
-def get_per_pbr_cached(stock_id):
-    if stock_id not in PER_PBR_CACHE:
-        if len(PER_PBR_CACHE) > 500:
-            PER_PBR_CACHE.clear()
-        PER_PBR_CACHE[stock_id] = get_per_pbr_90d_stats(stock_id)
-    return PER_PBR_CACHE[stock_id]
+def process_stock(s, static_map=None):
+    stock_id = str(s["stock_id"])
+    name = s["name"]
 
-
-def process_stock(s):
     base = {
-        "name": s["name"],
-        "code": s["stock_id"],
+        "name": name,
+        "code": stock_id,
         "price": None,
         "chg": None,
         "chgPct": None,
@@ -99,8 +119,10 @@ def process_stock(s):
         "entry_note": "",
     }
 
+    static_row = (static_map or {}).get(stock_id, {})
+
     try:
-        df = get_stock_data(s["stock_id"])
+        df = get_stock_data(stock_id)
 
         if df is None:
             x = base.copy()
@@ -109,6 +131,7 @@ def process_stock(s):
                 "signal_text": "查無資料",
                 "reason": "get_stock_data 回傳 None",
             })
+            x.update(_build_static_fields(static_row))
             return x
 
         if df.empty:
@@ -118,6 +141,7 @@ def process_stock(s):
                 "signal_text": "查無資料",
                 "reason": "股價資料為空",
             })
+            x.update(_build_static_fields(static_row))
             return x
 
         if len(df) < 90:
@@ -127,6 +151,7 @@ def process_stock(s):
                 "signal_text": "資料不足",
                 "reason": f"歷史資料不足90日，僅有 {len(df)} 筆",
             })
+            x.update(_build_static_fields(static_row))
             return x
 
         df = add_indicators(df)
@@ -138,34 +163,10 @@ def process_stock(s):
         chgamp = latest["max"] - latest["min"]
         amp = round((chgamp / prev["close"]) * 100, 2)
 
-        eps_res = get_eps_analysis(s["stock_id"], latest["close"])
-        eps_res = tuple(eps_res) if isinstance(eps_res, tuple) else (None,) * 6
-        eps_res = eps_res + (None,) * (6 - len(eps_res))
-
-        rev = get_revenue_trend(s["stock_id"]) or {}
-
         try:
-            profit_res = get_profit_ratio(s["stock_id"]) or {
-                "current": {},
-                "qoq": {},
-                "yoy_diff": {},
-            }
+            yield_raw = get_dividend_yield(stock_id, latest["close"])
         except Exception as e:
-            print(f"❌ profit source error {s['stock_id']}: {e}")
-            profit_res = {
-                "current": {},
-                "qoq": {},
-                "yoy_diff": {},
-            }
-
-        cur_g, qoq_g, yoy_g = extract_metric(profit_res, "gross")
-        cur_o, qoq_o, yoy_o = extract_metric(profit_res, "op")
-        cur_n, qoq_n, yoy_n = extract_metric(profit_res, "net")
-
-        try:
-            yield_raw = get_dividend_yield(s["stock_id"], latest["close"])
-        except Exception as e:
-            print(f"❌ dividend error {s['stock_id']}: {e}")
+            print(f"❌ dividend error {stock_id}: {e}")
             yield_raw = None
 
         dividend = None
@@ -177,23 +178,17 @@ def process_stock(s):
             yield_value = float(yield_raw)
 
         try:
-            per_pbr_stats = get_per_pbr_cached(s["stock_id"]) or {}
-        except Exception as e:
-            print(f"❌ per/pbr error {s['stock_id']}: {e}")
-            per_pbr_stats = {}
-
-        try:
             ma_stats = get_MABias(df) or {}
         except Exception as e:
-            print(f"❌ ma bias error {s['stock_id']}: {e}")
+            print(f"❌ ma bias error {stock_id}: {e}")
             ma_stats = {}
 
         safe_ma_stats = {}
         for k2, v2 in ma_stats.items():
             if v2 is None or pd.isna(v2):
-                safe_ma_stats[k2] = None
+                safe_ma_stats[k2.lower()] = None
             else:
-                safe_ma_stats[k2] = float(v2)
+                safe_ma_stats[k2.lower()] = float(v2)
 
         k = float(latest["K"]) if pd.notna(latest["K"]) else None
         d = float(latest["D"]) if pd.notna(latest["D"]) else None
@@ -211,8 +206,8 @@ def process_stock(s):
             elif k < d:
                 kd_score = -0.5
 
-        kd_trend = get_kd_trend(df) or {"kd_3d_up": None, "kd_trend": None}
-        bb_trend = get_bb_trend(df) or {"bb_3d_up": None, "bb_trend": None}
+        kd_trend = get_kd_trend(df) or {"kd_3d_up": None, "kd_trend": None, "kd_score": None}
+        bb_trend = get_bb_trend(df) or {"bb_3d_up": None, "bb_trend": None, "bb_score": None}
         k_trend = kd_trend.get("kd_trend")
         d_trend = None
 
@@ -242,12 +237,12 @@ def process_stock(s):
         bias6 = safe_ma_stats.get("bias6")
         bias18 = safe_ma_stats.get("bias18")
         bias50 = safe_ma_stats.get("bias50")
-        bias6_min = safe_ma_stats.get("bias6_min")
-        bias6_max = safe_ma_stats.get("bias6_max")
-        bias18_min = safe_ma_stats.get("bias18_min")
-        bias18_max = safe_ma_stats.get("bias18_max")
-        bias50_min = safe_ma_stats.get("bias50_min")
-        bias50_max = safe_ma_stats.get("bias50_max")
+        bias6_min = safe_ma_stats.get("bias6_90d_low") or safe_ma_stats.get("bias6_min")
+        bias6_max = safe_ma_stats.get("bias6_90d_high") or safe_ma_stats.get("bias6_max")
+        bias18_min = safe_ma_stats.get("bias18_90d_low") or safe_ma_stats.get("bias18_min")
+        bias18_max = safe_ma_stats.get("bias18_90d_high") or safe_ma_stats.get("bias18_max")
+        bias50_min = safe_ma_stats.get("bias50_90d_low") or safe_ma_stats.get("bias50_min")
+        bias50_max = safe_ma_stats.get("bias50_90d_high") or safe_ma_stats.get("bias50_max")
 
         try:
             signal_res = get_tech_signal(
@@ -276,14 +271,14 @@ def process_stock(s):
                 ma18=ma18,
                 prev_ma18=prev_ma18,
                 prev_close=prev_close,
-            ) or {"signal": "觀察", "reason": "", "signal_text": "觀察"}
+            ) or {"signal": "等待觀察", "reason": "", "signal_text": "等待觀察"}
         except Exception as e:
-            print(f"❌ signal error {s['stock_id']}: {e}")
-            signal_res = {"signal": "觀察", "reason": f"signal error: {e}", "signal_text": "觀察"}
+            print(f"❌ signal error {stock_id}: {e}")
+            signal_res = {"signal": "等待觀察", "reason": f"signal error: {e}", "signal_text": "等待觀察"}
 
-        signal = signal_res.get("signal", "觀察")
+        signal = signal_res.get("signal", "等待觀察")
         reason = signal_res.get("reason", "")
-        signal_text = signal_res.get("signal_text", "觀察")
+        signal_text = signal_res.get("signal_text", "等待觀察")
 
         sig = 1 if signal == "買進" else -1 if signal == "賣出" else 0
 
@@ -300,9 +295,23 @@ def process_stock(s):
         elif signal == "買進" and ma18_break and chgPct >= 3:
             entry_note = "追漲"
 
-        margin_score = calc_margin_score(cur_g, cur_o, cur_n)
-        eps_score = calc_eps_score(eps_res[1], eps_res[2])
-        trend_score = calc_trend_score(qoq_g, yoy_g, qoq_n, yoy_n)
+        static_fields = _build_static_fields(static_row)
+
+        margin_score = calc_margin_score(
+            static_fields.get("gross_margin"),
+            static_fields.get("operating_margin"),
+            static_fields.get("net_margin"),
+        )
+        eps_score = calc_eps_score(
+            static_fields.get("eps_ttm"),
+            static_fields.get("eps_est"),
+        )
+        trend_score = calc_trend_score(
+            static_fields.get("gross_margin_qoq"),
+            static_fields.get("gross_margin_yoy_diff"),
+            static_fields.get("net_margin_qoq"),
+            static_fields.get("net_margin_yoy_diff"),
+        )
         score = round(margin_score * 0.4 + eps_score * 0.3 + trend_score * 0.3, 2)
 
         def to_py(v):
@@ -317,39 +326,20 @@ def process_stock(s):
             return v
 
         result = {
-            "name": s["name"],
-            "code": s["stock_id"],
+            "name": name,
+            "code": stock_id,
             "price": float(round(close, 2)),
             "price_90d_high": price_stats.get("price_90d_high"),
             "price_90d_low": price_stats.get("price_90d_low"),
             "chg": float(round(chg, 2)),
             "chgPct": float(chgPct),
             "amp": float(amp),
-            "rev": rev.get("rev"),
-            "rev_mom": rev.get("mom"),
-            "rev_qoq": rev.get("qoq"),
-            "rev_yoy": rev.get("yoy"),
-            "gross_margin": float(cur_g) if cur_g is not None else None,
-            "gross_margin_qoq": float(qoq_g) if qoq_g is not None else None,
-            "gross_margin_yoy_diff": float(yoy_g) if yoy_g is not None else None,
-            "operating_margin": float(cur_o) if cur_o is not None else None,
-            "operating_margin_qoq": float(qoq_o) if qoq_o is not None else None,
-            "operating_margin_yoy_diff": float(yoy_o) if yoy_o is not None else None,
-            "net_margin": float(cur_n) if cur_n is not None else None,
-            "net_margin_qoq": float(qoq_n) if qoq_n is not None else None,
-            "net_margin_yoy_diff": float(yoy_n) if yoy_n is not None else None,
-            "eps_Y": float(eps_res[0]) if eps_res[0] is not None else None,
-            "eps_ttm": float(eps_res[1]) if eps_res[1] is not None else None,
-            "eps_est": float(eps_res[2]) if eps_res[2] is not None else None,
+
+            **static_fields,
+
             "dividend": float(dividend) if dividend is not None else None,
             "yield_value": float(yield_value) if yield_value is not None and not pd.isna(yield_value) else None,
-            "per_Y": float(eps_res[3]) if eps_res[3] is not None else None,
-            "per_latest": per_pbr_stats.get("per"),
-            "per_90d_high": per_pbr_stats.get("per_90d_high"),
-            "per_90d_low": per_pbr_stats.get("per_90d_low"),
-            "pbr_latest": per_pbr_stats.get("pbr"),
-            "pbr_90d_high": per_pbr_stats.get("pbr_90d_high"),
-            "pbr_90d_low": per_pbr_stats.get("pbr_90d_low"),
+
             "k": float(round(k, 1)) if k is not None else None,
             "d": float(round(d, 1)) if d is not None else None,
             "kd_3d_up": kd_trend.get("kd_3d_up"),
@@ -371,7 +361,19 @@ def process_stock(s):
             "prev2_volume": int(round(prev2_volume, 0)) if pd.notna(prev2_volume) else None,
             "volume_ratio": float(volume_ratio) if volume_ratio is not None else None,
             "volume_add": volume_add if volume_add is not None else None,
-            **safe_ma_stats,
+
+            "ma6": safe_ma_stats.get("ma6"),
+            "bias6": bias6,
+            "bias6_min": bias6_min,
+            "bias6_max": bias6_max,
+            "bias18": bias18,
+            "bias18_min": bias18_min,
+            "bias18_max": bias18_max,
+            "ma50": safe_ma_stats.get("ma50"),
+            "bias50": bias50,
+            "bias50_min": bias50_min,
+            "bias50_max": bias50_max,
+
             "sig": int(sig),
             "signal": signal,
             "score": float(score),
@@ -381,9 +383,12 @@ def process_stock(s):
         }
         return {k: to_py(v) for k, v in result.items()}
 
+    except RuntimeError:
+        raise
     except Exception as e:
-        print(f"❌ process error {s['stock_id']}: {e}")
+        print(f"❌ process error {stock_id}: {e}")
         x = base.copy()
+        x.update(_build_static_fields(static_row))
         x.update({
             "signal": "資料異常",
             "signal_text": "資料異常",
@@ -391,11 +396,48 @@ def process_stock(s):
         })
         return x
 
-def get_full_stock_analysis(stock_list):
+
+def _build_static_fields(static_row):
+    return {
+        "eps_Y": to_float_or_none(static_row.get("eps_Y")),
+        "eps_ttm": to_float_or_none(static_row.get("eps_ttm")),
+        "eps_est": to_float_or_none(static_row.get("eps_est")),
+        "per_Y": to_float_or_none(static_row.get("per_Y")),
+
+        "rev": to_float_or_none(static_row.get("rev")),
+        "rev_mom": to_float_or_none(static_row.get("rev_mom")),
+        "rev_qoq": to_float_or_none(static_row.get("rev_qoq")),
+        "rev_yoy": to_float_or_none(static_row.get("rev_yoy")),
+
+        "gross_margin": to_float_or_none(static_row.get("gross_margin")),
+        "gross_margin_qoq": to_float_or_none(static_row.get("gross_margin_qoq")),
+        "gross_margin_yoy_diff": to_float_or_none(static_row.get("gross_margin_yoy_diff")),
+
+        "operating_margin": to_float_or_none(static_row.get("operating_margin")),
+        "operating_margin_qoq": to_float_or_none(static_row.get("operating_margin_qoq")),
+        "operating_margin_yoy_diff": to_float_or_none(static_row.get("operating_margin_yoy_diff")),
+
+        "net_margin": to_float_or_none(static_row.get("net_margin")),
+        "net_margin_qoq": to_float_or_none(static_row.get("net_margin_qoq")),
+        "net_margin_yoy_diff": to_float_or_none(static_row.get("net_margin_yoy_diff")),
+
+        "per_latest": to_float_or_none(static_row.get("per_latest")),
+        "per_90d_high": to_float_or_none(static_row.get("per_90d_high")),
+        "per_90d_low": to_float_or_none(static_row.get("per_90d_low")),
+        "pbr_latest": to_float_or_none(static_row.get("pbr_latest")),
+        "pbr_90d_high": to_float_or_none(static_row.get("pbr_90d_high")),
+        "pbr_90d_low": to_float_or_none(static_row.get("pbr_90d_low")),
+    }
+
+
+def get_full_stock_analysis(stock_list, static_map=None):
     results = []
+    if static_map is None:
+        static_map = load_static_map()
+
     for i, s in enumerate(stock_list, 1):
-        print(f"處理中 {i}/{len(stock_list)}: {s}")
-        data = process_stock(s)
+        #   print(f"處理中 {i}/{len(stock_list)}: {s}")
+        data = process_stock(s, static_map=static_map)
         results.append(data)
 
         if data.get("signal") in ("無資料", "資料不足", "資料異常"):

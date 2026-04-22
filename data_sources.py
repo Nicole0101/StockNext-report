@@ -27,7 +27,13 @@ def get_stock_data(stock_id):
         res = requests.get(API_URL, params=params, timeout=30)
         data = res.json()
 
+        if res.status_code == 402:
+            raise RuntimeError(
+                f"FinMind quota exceeded for {stock_id}: {data.get('msg')}")
+
         if 'data' not in data or len(data['data']) == 0:
+            print(
+                f"⚠️ get_stock_data empty {stock_id}: status={res.status_code}, msg={data.get('msg')}")
             return pd.DataFrame()
 
         df = pd.DataFrame(data['data'])
@@ -54,8 +60,10 @@ def get_stock_data(stock_id):
 
         df = df.dropna(subset=['open', 'close', 'max',
                        'min']).sort_values('date')
-        return df
 
+        return df
+    except RuntimeError:
+        raise
     except Exception as e:
         print(f'❌ get_stock_data error {stock_id}: {e}')
         return pd.DataFrame()

@@ -425,8 +425,8 @@
       const formatted = isInteger
         ? num.toLocaleString("en-US")               // 1,234
         : num.toLocaleString("en-US", {
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
         });                                       // 1,234.5
       return formatted + suffix;
     }
