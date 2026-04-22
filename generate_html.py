@@ -13,7 +13,7 @@ def get_finmind_usage():
     token = os.getenv("FINMIND_TOKEN")
     headers = {"Authorization": f"Bearer {token}"}
     url = "https://api.web.finmindtrade.com/v2/user_info"
-    resp = requests.get(url, headers=headers, timeout=10)
+    resp = requests.get(url, headers=headers, timeout=30)
     data = resp.json()
     used = data.get("user_count", 0)
     limit = data.get("api_request_limit", 0)
