@@ -15,21 +15,39 @@ print("output_gold =", output_gold, flush=True)
 if not os.path.isdir(allcsv_dir):
     raise FileNotFoundError(f"Allcsv directory not found: {allcsv_dir}")
 
+
+def read_csv_flexible(file_path):
+    encodings = ["utf-8-sig", "utf-8", "cp950", "big5"]
+
+    last_error = None
+    for enc in encodings:
+        try:
+            df = pd.read_csv(file_path, sep="\t", encoding=enc)
+
+            if len(df.columns) == 1:
+                df = pd.read_csv(file_path, encoding=enc)
+
+            return df, enc
+        except Exception as e:
+            last_error = e
+
+    raise last_error
+
+
 for filename in os.listdir(allcsv_dir):
     file_path = os.path.join(allcsv_dir, filename)
 
     if not os.path.isfile(file_path):
+        print(f"skip not file: {filename}", flush=True)
         continue
-    if filename.lower() == "gold.csv":
-        continue
+
     if not filename.lower().endswith((".csv", ".txt")):
+        print(f"skip ext: {filename}", flush=True)
         continue
 
     try:
-        df = pd.read_csv(file_path, sep="\t", encoding="utf-8-sig")
-
-        if len(df.columns) == 1:
-            df = pd.read_csv(file_path, encoding="utf-8-sig")
+        df, used_encoding = read_csv_flexible(file_path)
+        df.columns = df.columns.str.strip()
 
         if {"Ticker", "Name"}.issubset(df.columns):
             temp = df[["Ticker", "Name"]].copy()
@@ -37,7 +55,10 @@ for filename in os.listdir(allcsv_dir):
             temp = df[["代碼", "名稱"]].copy()
             temp.columns = ["Ticker", "Name"]
         else:
-            print(f"skip: {filename}, columns={df.columns.tolist()}", flush=True)
+            print(
+                f"skip columns: {filename}, encoding={used_encoding}, columns={df.columns.tolist()}",
+                flush=True
+            )
             continue
 
         temp["Ticker"] = temp["Ticker"].astype(str).str.strip()
@@ -53,7 +74,7 @@ for filename in os.listdir(allcsv_dir):
         if not temp.empty:
             all_rows.append(temp)
 
-        print(f"loaded: {filename}, rows={len(temp)}", flush=True)
+        print(f"loaded: {filename}, encoding={used_encoding}, rows={len(temp)}", flush=True)
 
     except Exception as e:
         print(f"failed: {filename}, error={e}", flush=True)
