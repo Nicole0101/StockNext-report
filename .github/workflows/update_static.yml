@@ -50,7 +50,7 @@ jobs:
 
       - name: Repair AllStatic status columns without API
         run: |
-          python generate_static_csv_batch_v4.py --repair-only
+          python generate_static_csv_batch.py --repair-only
 
       - name: Generate AllStatic.csv incrementally
         env:
