@@ -57,7 +57,7 @@ jobs:
           FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
           STATIC_CSV_FILE: AllStatic.csv
         run: |
-          python generate_static_csv_batch_v4.py \
+          python generate_static_csv.py \
             --max-rows 40 \
             --min-remain 80 \
             --check-every 5 \
