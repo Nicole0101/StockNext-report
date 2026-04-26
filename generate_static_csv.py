@@ -163,14 +163,16 @@ def finalize_static_status(row: dict) -> dict:
         if g_status == "ok":
             missing = [c for c in cols if is_blank_value(row.get(c))]
             if missing:
-                set_group_status(row, g, "incomplete", "ok status but missing: " + ",".join(missing[:8]))
+                set_group_status(
+                    row, g, "incomplete", "ok status but missing: " + ",".join(missing[:8]))
                 problems.append(f"{g}: missing fields")
         elif g_status == "no_data":
             no_data_groups.append(f"{g}({g_reason})" if g_reason else g)
         elif g_status in {"api_limited", "limited"}:
             problems.append(f"{g}: api_limited")
         elif g_status == "error":
-            problems.append(f"{g}: error" + (f" - {g_reason}" if g_reason else ""))
+            problems.append(
+                f"{g}: error" + (f" - {g_reason}" if g_reason else ""))
         else:
             problems.append(f"{g}: {g_status or 'pending'}")
 
@@ -184,7 +186,8 @@ def finalize_static_status(row: dict) -> dict:
         row["static_reason"] = "; ".join(problems[:6])
     elif no_data_groups:
         row["static_status"] = "partial_ok"
-        row["static_reason"] = "source no data: " + "; ".join(no_data_groups[:6])
+        row["static_reason"] = "source no data: " + \
+            "; ".join(no_data_groups[:6])
     else:
         row["static_status"] = "ok"
         row["static_reason"] = ""
@@ -210,9 +213,11 @@ def build_static_row(s: dict) -> dict:
         row["per_Y"] = per_last
         row["per_ttm"] = per_ttm
         if all_blank(row, GROUPS["eps"]):
-            set_group_status(row, "eps", "no_data", "EPS/PER source returned empty")
+            set_group_status(row, "eps", "no_data",
+                             "EPS/PER source returned empty")
         elif any_blank(row, GROUPS["eps"]):
-            set_group_status(row, "eps", "incomplete", "EPS/PER source returned partial data")
+            set_group_status(row, "eps", "incomplete",
+                             "EPS/PER source returned partial data")
         else:
             set_group_status(row, "eps", "ok", "")
     except Exception as e:
@@ -231,11 +236,13 @@ def build_static_row(s: dict) -> dict:
         row["rev_yoy"] = rev.get("yoy")
         if rev:
             if any_blank(row, GROUPS["revenue"]):
-                set_group_status(row, "revenue", "incomplete", "revenue source returned partial data")
+                set_group_status(row, "revenue", "incomplete",
+                                 "revenue source returned partial data")
             else:
                 set_group_status(row, "revenue", "ok", "")
         else:
-            set_group_status(row, "revenue", "no_data", reason or "revenue source returned empty")
+            set_group_status(row, "revenue", "no_data",
+                             reason or "revenue source returned empty")
     except Exception as e:
         if is_finmind_limit_error(e):
             set_group_status(row, "revenue", "api_limited", str(e))
@@ -258,9 +265,11 @@ def build_static_row(s: dict) -> dict:
         row["net_margin_qoq"] = qoq_n
         row["net_margin_yoy_diff"] = yoy_n
         if all_blank(row, GROUPS["profit"]):
-            set_group_status(row, "profit", "no_data", "profit ratio source returned empty")
+            set_group_status(row, "profit", "no_data",
+                             "profit ratio source returned empty")
         elif any_blank(row, GROUPS["profit"]):
-            set_group_status(row, "profit", "incomplete", "profit ratio source returned partial data")
+            set_group_status(row, "profit", "incomplete",
+                             "profit ratio source returned partial data")
         else:
             set_group_status(row, "profit", "ok", "")
     except Exception as e:
@@ -279,9 +288,11 @@ def build_static_row(s: dict) -> dict:
         row["pbr_90d_high"] = per_pbr.get("pbr_90d_high")
         row["pbr_90d_low"] = per_pbr.get("pbr_90d_low")
         if all_blank(row, GROUPS["valuation"]):
-            set_group_status(row, "valuation", "no_data", "PER/PBR source returned empty")
+            set_group_status(row, "valuation", "no_data",
+                             "PER/PBR source returned empty")
         elif any_blank(row, GROUPS["valuation"]):
-            set_group_status(row, "valuation", "incomplete", "PER/PBR source returned partial data")
+            set_group_status(row, "valuation", "incomplete",
+                             "PER/PBR source returned partial data")
         else:
             set_group_status(row, "valuation", "ok", "")
     except Exception as e:
@@ -331,9 +342,11 @@ def should_update(row, retry_errors: bool, retry_no_data: bool, force: bool) -> 
     static_status = str(row.get("static_status", "")).strip().lower()
 
     # Rows created by v3 have source statuses. Trust them more than field blankness.
-    has_source_meta = any(not is_blank_value(row.get(f"{g}_status")) for g in GROUPS)
+    has_source_meta = any(not is_blank_value(
+        row.get(f"{g}_status")) for g in GROUPS)
     if has_source_meta:
-        source_statuses = [str(row.get(f"{g}_status", "")).strip().lower() for g in GROUPS]
+        source_statuses = [
+            str(row.get(f"{g}_status", "")).strip().lower() for g in GROUPS]
         if all(s in SOURCE_TERMINAL_STATUSES for s in source_statuses):
             # ok: all data present. partial_ok: some source confirmed no_data. Both are terminal by default.
             if static_status == "partial_ok" and retry_no_data:
@@ -357,14 +370,16 @@ def repair_legacy_status_only(df: pd.DataFrame) -> pd.DataFrame:
     repaired = []
     for _, r in df.iterrows():
         row = r.to_dict()
-        has_source_meta = any(not is_blank_value(row.get(f"{g}_status")) for g in GROUPS)
+        has_source_meta = any(not is_blank_value(
+            row.get(f"{g}_status")) for g in GROUPS)
         if has_source_meta:
             row = finalize_static_status(row)
         else:
             missing = legacy_missing_data_cols(row)
             if missing:
                 row["static_status"] = "incomplete"
-                row["static_reason"] = "legacy row missing fields; run API check to distinguish no_data: " + ",".join(missing[:8])
+                row["static_reason"] = "legacy row missing fields; run API check to distinguish no_data: " + \
+                    ",".join(missing[:8])
             else:
                 row["static_status"] = "ok"
                 row["static_reason"] = ""
@@ -372,7 +387,7 @@ def repair_legacy_status_only(df: pd.DataFrame) -> pd.DataFrame:
     return normalize_static_df(pd.DataFrame(repaired))
 
 
-def build_incremental(stock_list, output_file, max_rows, min_remain, retry_errors, retry_no_data, force, sleep_sec, repair_only):
+def build_incremental(stock_list, output_file, max_rows, min_remain, retry_errors, retry_no_data, force, sleep_sec, repair_only, check_every):
     existing = read_existing_static(output_file)
     existing = repair_legacy_status_only(existing)
     existing_by_id = {
@@ -382,7 +397,8 @@ def build_incremental(stock_list, output_file, max_rows, min_remain, retry_error
     }
 
     src_ids = [str(s["stock_id"]).strip() for s in stock_list]
-    rows_by_id = {sid: existing_by_id.get(sid, empty_static_row(s)) for sid, s in zip(src_ids, stock_list)}
+    rows_by_id = {sid: existing_by_id.get(
+        sid, empty_static_row(s)) for sid, s in zip(src_ids, stock_list)}
 
     ordered_rows = [rows_by_id[str(s["stock_id"]).strip()] for s in stock_list]
     atomic_write_csv(pd.DataFrame(ordered_rows), output_file)
@@ -410,24 +426,33 @@ def build_incremental(stock_list, output_file, max_rows, min_remain, retry_error
             stop_reason = f"max_rows reached: {max_rows}"
             break
 
-        try:
-            _, _, remain = get_finmind_usage()
-            if remain <= min_remain:
-                stop_reason = f"FinMind remain <= min_remain: {remain} <= {min_remain}"
-                break
-        except Exception as e:
-            print(f"Cannot check FinMind usage, continue cautiously: {e}", flush=True)
+        # Checking user_info too often can itself consume quota on some plans.
+        # Check before the first stock and then every N processed stocks.
+        should_check_usage = processed == 0 or (
+            check_every and processed % check_every == 0)
+        if should_check_usage:
+            try:
+                _, _, remain = get_finmind_usage()
+                if remain <= min_remain:
+                    stop_reason = f"FinMind remain <= min_remain: {remain} <= {min_remain}"
+                    break
+            except Exception as e:
+                print(
+                    f"Cannot check FinMind usage, continue cautiously: {e}", flush=True)
 
         sid = str(s["stock_id"]).strip()
-        print(f"Processing {i}/{len(candidates)}: {sid} {s.get('name')}", flush=True)
+        print(
+            f"Processing {i}/{len(candidates)}: {sid} {s.get('name')}", flush=True)
 
         row = build_static_row(s)
         rows_by_id[sid] = row
         processed += 1
 
-        ordered_rows = [rows_by_id[str(x["stock_id"]).strip()] for x in stock_list]
+        ordered_rows = [rows_by_id[str(x["stock_id"]).strip()]
+                        for x in stock_list]
         atomic_write_csv(pd.DataFrame(ordered_rows), output_file)
-        print(f"Saved progress: {processed} updated in this run -> {output_file}", flush=True)
+        print(
+            f"Saved progress: {processed} updated in this run -> {output_file}", flush=True)
 
         if str(row.get("static_status", "")).lower() == "api_limited":
             stop_reason = f"FinMind API upper limit reached at {sid} {s.get('name')}: {row.get('static_reason')}"
@@ -437,10 +462,12 @@ def build_incremental(stock_list, output_file, max_rows, min_remain, retry_error
             time.sleep(sleep_sec)
 
     final_df = read_existing_static(output_file)
-    status_counts = final_df["static_status"].astype(str).str.lower().value_counts().to_dict() if not final_df.empty else {}
+    status_counts = final_df["static_status"].astype(
+        str).str.lower().value_counts().to_dict() if not final_df.empty else {}
     print(f"Run stopped: {stop_reason}", flush=True)
     print(f"Updated this run: {processed}", flush=True)
-    print(f"AllStatic progress: {status_counts}, total={len(final_df)}", flush=True)
+    print(
+        f"AllStatic progress: {status_counts}, total={len(final_df)}", flush=True)
 
 
 def load_stock_list():
@@ -453,15 +480,26 @@ def load_stock_list():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Incrementally build AllStatic.csv and distinguish no_data from incomplete/API limit.")
-    parser.add_argument("--output", default=getattr(config, "STATIC_OUTPUT_FILE", "AllStatic.csv"))
-    parser.add_argument("--max-rows", type=int, default=None, help="Max stocks to update in this run.")
-    parser.add_argument("--min-remain", type=int, default=20, help="Stop before FinMind remain drops to this number.")
-    parser.add_argument("--retry-errors", action="store_true", help="Retry rows whose static_status is error.")
-    parser.add_argument("--retry-no-data", action="store_true", help="Retry rows marked partial_ok/no_data.")
-    parser.add_argument("--force", action="store_true", help="Refresh every stock even if existing row is terminal.")
-    parser.add_argument("--repair-only", action="store_true", help="Only repair status columns; do not call APIs.")
-    parser.add_argument("--sleep-sec", type=float, default=0.2, help="Sleep between stocks.")
+    parser = argparse.ArgumentParser(
+        description="Incrementally build AllStatic.csv and distinguish no_data from incomplete/API limit.")
+    parser.add_argument("--output", default=getattr(config,
+                        "STATIC_OUTPUT_FILE", "AllStatic.csv"))
+    parser.add_argument("--max-rows", type=int, default=None,
+                        help="Max stocks to update in this run.")
+    parser.add_argument("--min-remain", type=int, default=20,
+                        help="Stop before FinMind remain drops to this number.")
+    parser.add_argument("--retry-errors", action="store_true",
+                        help="Retry rows whose static_status is error.")
+    parser.add_argument("--retry-no-data", action="store_true",
+                        help="Retry rows marked partial_ok/no_data.")
+    parser.add_argument("--force", action="store_true",
+                        help="Refresh every stock even if existing row is terminal.")
+    parser.add_argument("--repair-only", action="store_true",
+                        help="Only repair status columns; do not call APIs.")
+    parser.add_argument("--sleep-sec", type=float,
+                        default=0.2, help="Sleep between stocks.")
+    parser.add_argument("--check-every", type=int, default=10,
+                        help="Check FinMind usage before first stock and every N processed stocks. Use 1 for every stock.")
     args = parser.parse_args()
 
     try:
@@ -480,6 +518,7 @@ def main():
         force=args.force,
         sleep_sec=args.sleep_sec,
         repair_only=args.repair_only,
+        check_every=max(args.check_every, 1),
     )
 
 
