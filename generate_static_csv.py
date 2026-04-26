@@ -70,13 +70,16 @@ def is_blank_value(value) -> bool:
 
 def is_finmind_limit_error(exc: Exception) -> bool:
     msg = str(exc).lower()
-    return (
-        "upper limit" in msg
-        or "reach the upper limit" in msg
-        or "requests reach" in msg
-        or "api_request_limit" in msg
-        or "429" in msg
-    )
+
+    limit_keywords = [
+        "requests reach the upper limit",
+        "requests reach the upper limit.",
+        "reach the upper limit",
+        "upper limit",
+        "api_request_limit",
+        "429",
+    ]
+    return any(keyword in msg for keyword in limit_keywords)
 
 
 def all_blank(row: dict, cols: list[str]) -> bool:
