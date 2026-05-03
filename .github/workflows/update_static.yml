@@ -58,10 +58,11 @@ jobs:
           STATIC_CSV_FILE: AllStatic.csv
         run: |
           python generate_static_csv.py \
-            --max-rows 40 \
-            --min-remain 50 \
-            --check-every 20 \
-            --retry-errors
+              --max-rows 80 \
+              --min-remain 50 \
+              --check-every 20 \
+              --retry-errors \
+              --refresh-days 7
 
       - name: Commit AllStatic.csv
         run: |
