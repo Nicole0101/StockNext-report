@@ -145,18 +145,20 @@ def parse_static_updated_at(value):
         return None
 
 
-def is_stale_ok_row(row: dict, refresh_days: int) -> bool:
-    """Return True when an OK row is older than refresh_days and should be refreshed."""
-    if refresh_days is None or refresh_days <= 0:
+def is_stale_ok_row(row: dict, refresh_hours: int) -> bool:
+    """Return True when an OK row is older than refresh_hours and should be refreshed."""
+    if refresh_hours is None or refresh_hours <= 0:
         return False
+
     status = str(row.get("static_status", "")).strip().lower()
     if status != "ok":
         return False
+
     updated_at = parse_static_updated_at(row.get("static_updated_at"))
     if updated_at is None:
         return True
-    return datetime.utcnow() - updated_at > timedelta(days=refresh_days)
 
+    return datetime.utcnow() - updated_at > timedelta(hours=refresh_hours)
 
 def all_blank(row: dict, cols: list[str]) -> bool:
     return all(is_blank_value(row.get(c)) for c in cols)
@@ -415,7 +417,7 @@ def legacy_missing_data_cols(row: dict) -> list[str]:
     return [c for c in DATA_COLS if is_blank_value(row.get(c))]
 
 
-def should_update(row, retry_errors: bool, retry_no_data: bool, force: bool, refresh_days: int) -> bool:
+def should_update(row, retry_errors: bool, retry_no_data: bool, force: bool, refresh_hours: int) -> bool:
     if force or row is None:
         return True
     if isinstance(row, pd.Series):
@@ -423,9 +425,9 @@ def should_update(row, retry_errors: bool, retry_no_data: bool, force: bool, ref
 
     static_status = str(row.get("static_status", "")).strip().lower()
 
-    # Weekly refresh: completed OK rows older than refresh_days are refreshed.
+    # 24HR refresh: completed OK rows older than refresh_24HR are refreshed.
     # partial_ok/no_data remains terminal by default unless --retry-no-data is used.
-    if is_stale_ok_row(row, refresh_days):
+    if is_stale_ok_row(row, refresh_hours):
         return True
 
     # Rows created by v3 have source statuses. Trust them more than field blankness.
@@ -474,7 +476,7 @@ def repair_legacy_status_only(df: pd.DataFrame) -> pd.DataFrame:
     return normalize_static_df(pd.DataFrame(repaired))
 
 
-def build_incremental(stock_list, output_file, max_rows, min_remain, retry_errors, retry_no_data, force, sleep_sec, repair_only, check_every, refresh_days):
+def build_incremental(stock_list, output_file, max_rows, min_remain, retry_errors, retry_no_data, force, sleep_sec, repair_only,check_every, refresh_hours):
     existing = read_existing_static(output_file)
     existing = repair_legacy_status_only(existing)
     existing_by_id = {
@@ -498,13 +500,13 @@ def build_incremental(stock_list, output_file, max_rows, min_remain, retry_error
     for s in stock_list:
         sid = str(s["stock_id"]).strip()
         current = rows_by_id.get(sid)
-        if should_update(current, retry_errors=retry_errors, retry_no_data=retry_no_data, force=force, refresh_days=refresh_days):
+        if should_update(current, retry_errors=retry_errors, retry_no_data=retry_no_data, force=force, refresh_hours=refresh_hours,):
             candidates.append(s)
 
     print(f"Existing rows: {len(existing_by_id)}", flush=True)
     print(f"Total source stocks: {len(stock_list)}", flush=True)
     stale_ok_count = sum(is_stale_ok_row(rows_by_id.get(
-        str(s["stock_id"]).strip(), {}), refresh_days) for s in stock_list)
+        str(s["stock_id"]).strip(), {}), refresh_hours) for s in stock_list)
     print(f"Need update this run: {len(candidates)}", flush=True)
     print(f"Stale OK rows queued for refresh: {stale_ok_count}", flush=True)
 
@@ -593,8 +595,8 @@ def main():
                         default=0.2, help="Sleep between stocks.")
     parser.add_argument("--check-every", type=int, default=10,
                         help="Check FinMind usage before first stock and every N processed stocks. Use 1 for every stock.")
-    parser.add_argument("--refresh-days", type=int, default=DEFAULT_REFRESH_DAYS,
-                        help="Refresh rows whose static_status is ok and static_updated_at is older than N days. Use 0 to disable.")
+    parser.add_argument("--refresh-hours", type=int, default=24,
+                    help="Refresh rows whose static_status is ok and static_updated_at is older than N hours. Use 0 to disable.")
     args = parser.parse_args()
 
     try:
@@ -614,7 +616,7 @@ def main():
         sleep_sec=args.sleep_sec,
         repair_only=args.repair_only,
         check_every=max(args.check_every, 1),
-        refresh_days=args.refresh_days,
+        refresh_hours=args.refresh_hours,
     )
 
 
