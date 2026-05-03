@@ -3,14 +3,14 @@ import pandas as pd
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 allcsv_dir = os.path.join(base_dir, "Allcsv")
-output_gold = os.path.join(base_dir, "Gold.csv")
+output_csv = os.path.join(base_dir, "stock.csv")
 
 all_rows = []
 
 print("cwd =", os.getcwd(), flush=True)
 print("script dir =", base_dir, flush=True)
 print("allcsv_dir =", allcsv_dir, flush=True)
-print("output_gold =", output_gold, flush=True)
+print("output_csv =", output_csv, flush=True)
 
 if not os.path.isdir(allcsv_dir):
     raise FileNotFoundError(f"Allcsv directory not found: {allcsv_dir}")
@@ -74,7 +74,8 @@ for filename in os.listdir(allcsv_dir):
         if not temp.empty:
             all_rows.append(temp)
 
-        print(f"loaded: {filename}, encoding={used_encoding}, rows={len(temp)}", flush=True)
+        print(
+            f"loaded: {filename}, encoding={used_encoding}, rows={len(temp)}", flush=True)
 
     except Exception as e:
         print(f"failed: {filename}, error={e}", flush=True)
@@ -91,9 +92,9 @@ if all_rows:
         .reset_index(drop=True)
     )
 
-    result.to_csv(output_gold, sep="\t", index=False, encoding="utf-8-sig")
+    result.to_csv(output_csv, sep="\t", index=False, encoding="utf-8-sig")
 
-    print(f"written: {output_gold}", flush=True)
+    print(f"written: {output_csv}", flush=True)
     print(f"rows: {len(result)}", flush=True)
 else:
     print("no data", flush=True)
