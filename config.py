@@ -1,5 +1,5 @@
 REPORT_TYPE = "Gold"
-CSV_FILE = "Gold.csv"
+CSV_FILE = "stocks.csv"
 REPORT_TITLE = "(黃金股)技術分析報告"
 OUTPUT_FILE = "黃金股"
 STATIC_OUTPUT_FILE = "AllStatic.csv"
