@@ -1,17 +1,17 @@
 ﻿stock_id,name,eps_Y,eps_ttm,per_Y,per_ttm,rev,rev_mom,rev_qoq,rev_yoy,gross_margin,gross_margin_qoq,gross_margin_yoy_diff,operating_margin,operating_margin_qoq,operating_margin_yoy_diff,net_margin,net_margin_qoq,net_margin_yoy_diff,per_latest,per_90d_high,per_90d_low,pbr_latest,pbr_90d_high,pbr_90d_low,static_updated_at,static_status,static_reason,eps_status,eps_reason,revenue_status,revenue_reason,profit_status,profit_reason,valuation_status,valuation_reason
-1101,台泥,-1.61,-1.62,,,124.13,44.44,-12.71,-8.97,18.49,-4.15,-4.8,3.76,-9.4,-7.12,-3.9,26.27,-14.63,0.0,0.0,0.0,0.83,0.91,0.75,2026-05-10 04:07:32,incomplete,eps:incomplete(partial),incomplete,partial,ok,,ok,,ok,
-1216,統一,3.46,3.7,0.29,0.27,573.79,11.34,9.69,2.58,33.78,2.05,0.62,5.86,3.27,-0.05,5.58,2.43,0.71,19.78,23.13,18.76,2.87,3.58,2.72,2026-05-09 04:29:20,ok,,ok,,ok,,ok,,ok,
-1319,東陽,6.43,5.97,0.16,0.17,20.09,-1.78,-6.58,-14.11,33.68,5.68,-0.83,18.07,6.62,-1.23,19.15,6.75,0.38,12.47,17.61,11.45,1.69,2.55,1.55,2026-05-09 04:29:22,ok,,ok,,ok,,ok,,ok,
+1101,台泥,-1.61,-1.62,,,124.13,44.44,-12.71,-8.97,18.49,-4.15,-4.8,3.76,-9.4,-7.12,-3.9,26.27,-14.63,0.0,0.0,0.0,0.83,0.91,0.75,2026-05-10 07:29:44,incomplete,eps:incomplete(partial),incomplete,partial,ok,,ok,,ok,
+1216,統一,3.46,3.7,0.29,0.27,573.79,11.34,9.69,2.58,33.78,2.05,0.62,5.86,3.27,-0.05,5.58,2.43,0.71,19.78,23.13,18.76,2.87,3.58,2.72,2026-05-10 07:29:47,ok,,ok,,ok,,ok,,ok,
+1319,東陽,6.43,5.97,0.16,0.17,20.09,-1.78,-6.58,-14.11,33.68,5.68,-0.83,18.07,6.62,-1.23,19.15,6.75,0.38,12.47,17.61,11.45,1.69,2.55,1.55,2026-05-10 07:29:49,ok,,ok,,ok,,ok,,ok,
 1503,士電,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:56:24,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 1513,中興電,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:56:25,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 1514,亞力,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:56:27,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 1519,華城,,,,,,,,,42.2,0.51,5.78,19.22,-1.4,-4.57,20.47,2.03,-1.32,63.97,79.24,53.93,26.72,38.93,23.43,2026-05-05 10:34:55,partial_ok,"no_data:eps,revenue",no_data,empty,no_data,empty,ok,,ok,
-1532,勤美,0.99,0.98,1.01,1.02,10.98,-11.22,1.51,5.47,24.21,-0.34,1.5,5.05,-7.83,5.48,3.64,-6.5,9.37,20.86,91.17,20.71,0.57,0.78,0.57,2026-05-09 04:29:24,ok,,ok,,ok,,ok,,ok,
+1532,勤美,0.99,0.98,1.01,1.02,10.98,-11.22,1.51,5.47,24.21,-0.34,1.5,5.05,-7.83,5.48,3.64,-6.5,9.37,20.86,91.17,20.71,0.57,0.78,0.57,2026-05-10 07:29:51,ok,,ok,,ok,,ok,,ok,
 1560,中砂,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:56:28,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 2301,光寶科,6.65,6.8,0.15,0.15,164.84,28.66,10.58,23.45,21.66,-0.06,-0.92,9.44,-1.05,-0.65,8.7,0.0,-0.79,,,,,,,2026-05-05 10:35:53,partial_ok,no_data:valuation,ok,,ok,,ok,,no_data,empty
 2308,台達電,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:56:30,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 2313,華通,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:56:31,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
-2317,鴻海,13.6,14.37,0.07,0.07,8320.98,3.53,13.98,29.74,5.88,-0.47,-0.27,3.28,-0.15,0.25,2.06,-1.15,-0.4,18.44,18.69,13.83,1.97,2.1,1.48,2026-05-09 04:29:26,ok,,ok,,ok,,ok,,ok,
+2317,鴻海,13.6,14.37,0.07,0.07,8320.98,3.53,13.98,29.74,5.88,-0.47,-0.27,3.28,-0.15,0.25,2.06,-1.15,-0.4,18.44,18.69,13.83,1.97,2.1,1.48,2026-05-10 07:29:53,ok,,ok,,ok,,ok,,ok,
 2330,台積電,66.26,69.99,0.02,0.01,4107.25,-1.08,2.36,17.5,62.33,2.88,3.33,54.0,3.42,4.98,48.31,2.67,5.19,34.57,34.87,23.37,10.96,11.05,7.42,2026-05-10 04:07:35,ok,,ok,,ok,,ok,,ok,
 2360,致茂,,,,,43.66,19.06,19.73,63.49,60.8,0.97,1.07,34.82,5.99,9.0,30.87,-48.91,5.43,80.98,83.7,29.05,29.68,30.68,10.46,2026-05-05 10:37:19,partial_ok,no_data:eps,no_data,empty,ok,,ok,,ok,
 2368,金像電,19.43,21.23,0.05,0.05,,,,,33.66,-1.9,7.72,24.3,-1.98,7.7,17.86,-0.4,4.85,77.85,77.85,36.81,22.34,22.34,10.88,2026-05-05 10:37:39,partial_ok,no_data:revenue,ok,,no_data,empty,ok,,ok,
@@ -63,7 +63,7 @@
 4991,環宇-KY,,,,,,,,,53.19,5.81,9.79,21.14,1.97,2.35,9.84,7.18,20.09,,,,,,,2026-05-04 15:16:22,partial_ok,"no_data:eps,revenue,valuation",no_data,empty,no_data,empty,ok,,no_data,empty
 5443,均豪,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:57:04,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 5536,聖暉*,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:57:05,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
-5871,中租-KY,11.24,11.15,0.09,0.09,84.15,12.15,2.08,-2.86,65.76,0.07,-0.25,29.24,2.43,6.62,20.9,1.16,3.45,10.57,11.42,9.54,1.15,1.24,1.04,2026-05-09 04:29:28,ok,,ok,,ok,,ok,,ok,
+5871,中租-KY,11.24,11.15,0.09,0.09,84.15,12.15,2.08,-2.86,65.76,0.07,-0.25,29.24,2.43,6.62,20.9,1.16,3.45,10.57,11.42,9.54,1.15,1.24,1.04,2026-05-10 07:29:55,ok,,ok,,ok,,ok,,ok,
 6139,亞翔,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:57:07,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 6187,萬潤,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:57:08,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 6196,帆宣,,,,,,,,,,,,,,,,,,,,,,,,2026-05-06 11:57:10,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
@@ -89,7 +89,7 @@
 6805,富世達,,,,,,,,,,,,,,,,,,,,,,,,2026-05-04 10:41:15,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 7711,永擎,,,,,,,,,,,,,,,,,,,,,,,,2026-05-04 10:41:17,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 7717,萊德光電-KY,6.12,6.12,0.16,0.16,,,,,66.64,8.56,9.76,24.91,4.46,14.96,20.21,4.62,7.17,113.38,400.45,94.62,17.24,31.93,9.61,2026-05-03 08:47:49,partial_ok,no_data:revenue,ok,,no_data,months<13:7,ok,,ok,
-7728,光焱科技,4.95,5.48,0.2,0.18,0.32,-2.25,-38.75,-18.5,70.34,4.68,2.98,34.34,29.72,7.77,32.41,18.3,11.06,162.6,276.0,128.15,14.71,17.49,8.12,2026-05-09 04:29:29,ok,,ok,,ok,,ok,,ok,
+7728,光焱科技,4.95,5.48,0.2,0.18,0.32,-2.25,-38.75,-18.5,70.34,4.68,2.98,34.34,29.72,7.77,32.41,18.3,11.06,162.6,276.0,128.15,14.71,17.49,8.12,2026-05-10 07:29:57,ok,,ok,,ok,,ok,,ok,
 7734,印能科技,,,,,,,,,,,,,,,,,,,,,,,,2026-05-04 10:41:18,partial_ok,"no_data:eps,revenue,profit,valuation",no_data,empty,no_data,empty,no_data,empty,no_data,empty
 7769,鴻勁,75.71,75.71,0.01,0.01,,,,,52.31,-5.39,-2.2,44.24,-6.57,-0.33,40.01,-4.11,3.19,71.97,96.01,51.01,15.33,41.8,10.87,2026-05-03 08:47:54,partial_ok,no_data:revenue,ok,,no_data,months<13:7,ok,,ok,
 7828,創新服務,,,,,,,,,,,,,,,,,,198.07,251.21,193.24,37.86,48.01,36.93,2026-05-03 08:47:56,partial_ok,"no_data:eps,revenue,profit",no_data,empty,no_data,months<13:2,no_data,empty,ok,
