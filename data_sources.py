@@ -86,7 +86,7 @@ def get_stock_data(stock_id):
             'start_date': '2023-01-01',
             'token': API_TOKEN,
         }
-        res = requests.get(API_URL, params=params, timeout=30)
+        res = requests.get(API_URL, params=params, timeout=180)
         data = _safe_response_json(res)
         _print_initial_quota_once(data, res)
 
