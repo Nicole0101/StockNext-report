@@ -11,9 +11,71 @@ API_TOKEN = os.getenv('FINMIND_TOKEN')
 API_URL = 'https://api.finmindtrade.com/api/v4/data'
 api = DataLoader()
 
+_INITIAL_QUOTA_PRINTED = False
+
 # 停用所有來自 FinMind 的 Log 訊息
 logger.remove()
 logging.getLogger('FinMind').setLevel(logging.WARNING)
+
+
+
+def _safe_response_json(res):
+    """避免 API 回傳非 JSON 時，印錯誤又讓程式中斷。"""
+    try:
+        return res.json()
+    except Exception:
+        return {}
+
+
+def _extract_remaining_quota(data, res=None):
+    """從 FinMind 回傳 body/header 中盡量抓出剩餘次數/額度資訊。"""
+    if res is not None:
+        for key in [
+            "X-RateLimit-Remaining", "X-Rate-Limit-Remaining",
+            "RateLimit-Remaining", "x-ratelimit-remaining"
+        ]:
+            value = res.headers.get(key)
+            if value not in [None, ""]:
+                return f"header {key}={value}"
+
+    for key in [
+        "api_usage", "api_remaining", "remaining", "remaining_count",
+        "quota", "limit", "msg", "message", "status"
+    ]:
+        value = data.get(key) if isinstance(data, dict) else None
+        if value not in [None, ""]:
+            text = str(value)
+            if any(word in text.lower() for word in [
+                "remaining", "quota", "limit", "api", "剩餘", "次數", "額度"
+            ]):
+                return text
+    return None
+
+
+def _print_initial_quota_once(data, res=None):
+    """第一次收到 API 回應時，印出起始剩餘次數。"""
+    global _INITIAL_QUOTA_PRINTED
+    if _INITIAL_QUOTA_PRINTED:
+        return
+
+    quota_msg = _extract_remaining_quota(data, res)
+    if quota_msg is None:
+        quota_msg = "API 回應未提供剩餘次數欄位"
+
+    print(f"🔢 FinMind API 起始剩餘次數: {quota_msg}")
+    _INITIAL_QUOTA_PRINTED = True
+
+
+def _print_api_status_error(source, stock_id, res, data=None):
+    """非 200/異常 API 狀態時，統一印出 status code 與訊息。"""
+    if data is None:
+        data = _safe_response_json(res)
+
+    msg = data.get("msg") or data.get("message") or data.get("status") or res.text[:200]
+    print(
+        f"❌ {source} API error {stock_id}: "
+        f"status_code={res.status_code}, msg={msg}"
+    )
 
 
 def get_stock_data(stock_id):
@@ -25,11 +87,17 @@ def get_stock_data(stock_id):
             'token': API_TOKEN,
         }
         res = requests.get(API_URL, params=params, timeout=30)
-        data = res.json()
+        data = _safe_response_json(res)
+        _print_initial_quota_once(data, res)
 
         if res.status_code == 402:
+            _print_api_status_error('get_stock_data', stock_id, res, data)
             raise RuntimeError(
                 f"FinMind quota exceeded for {stock_id}: {data.get('msg')}")
+
+        if res.status_code != 200:
+            _print_api_status_error('get_stock_data', stock_id, res, data)
+            return pd.DataFrame()
 
         if 'data' not in data or len(data['data']) == 0:
             print(
@@ -79,11 +147,14 @@ def get_revenue_raw(stock_id):
         }
 
         res = requests.get(API_URL, params=params, timeout=10)
+        res_data = _safe_response_json(res)
+        _print_initial_quota_once(res_data, res)
 
         if res.status_code != 200:
+            _print_api_status_error('revenue source', stock_id, res, res_data)
             return []
 
-        data = res.json().get('data', [])
+        data = res_data.get('data', [])
         return data
 
     except Exception as e:
@@ -111,7 +182,15 @@ def get_eps_raw(stock_id):
             'start_date': '2020-01-01',
             'token': API_TOKEN,
         }
-        return requests.get(API_URL, params=params, timeout=10).json().get('data', [])
+        res = requests.get(API_URL, params=params, timeout=10)
+        data = _safe_response_json(res)
+        _print_initial_quota_once(data, res)
+
+        if res.status_code != 200:
+            _print_api_status_error('EPS source', stock_id, res, data)
+            return []
+
+        return data.get('data', [])
     except Exception as e:
         print(f'❌ EPS source error {stock_id}: {e}')
         return []
@@ -126,9 +205,13 @@ def get_dividend_raw(stock_id):
             'token': API_TOKEN,
         }
         res = requests.get(API_URL, params=params, timeout=10)
+        data = _safe_response_json(res)
+        _print_initial_quota_once(data, res)
+
         if res.status_code != 200:
+            _print_api_status_error('dividend source', stock_id, res, data)
             return []
-        return res.json().get('data', [])
+        return data.get('data', [])
     except Exception as e:
         print(f'❌ dividend source error {stock_id}: {e}')
         return []
@@ -143,8 +226,16 @@ def get_per_raw(stock_id):
             'token': API_TOKEN,
         }
         res = requests.get(API_URL, params=params, timeout=10)
-        return res.json().get('data', [])
-    except Exception:
+        data = _safe_response_json(res)
+        _print_initial_quota_once(data, res)
+
+        if res.status_code != 200:
+            _print_api_status_error('PER source', stock_id, res, data)
+            return []
+
+        return data.get('data', [])
+    except Exception as e:
+        print(f'❌ PER source error {stock_id}: {e}')
         return []
 
 
@@ -173,7 +264,11 @@ def get_per_pbr_90d_stats(stock_id, days=90):
         }
 
         res = requests.get(API_URL, params=params, timeout=10)
+        res_data = _safe_response_json(res)
+        _print_initial_quota_once(res_data, res)
+
         if res.status_code != 200:
+            _print_api_status_error('PER/PBR 90D', stock_id, res, res_data)
             return {
                 "per": None,
                 "per_90d_high": None,
@@ -183,7 +278,7 @@ def get_per_pbr_90d_stats(stock_id, days=90):
                 "pbr_90d_low": None,
             }
 
-        data = res.json().get("data", [])
+        data = res_data.get("data", [])
         if not data:
             return {
                 "per": None,
