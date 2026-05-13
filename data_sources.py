@@ -7,16 +7,230 @@ import requests
 from FinMind.data import DataLoader
 from loguru import logger
 
-API_TOKEN = os.getenv('FINMIND_TOKEN')
+# Standardize on FINMIND_TOKEN only.
+FINMIND_token = os.getenv("FINMIND_TOKEN")
+FINMIND_TOKEN_SOURCE = "FINMIND_TOKEN" if FINMIND_token else ""
+headers = {"Authorization": f"Bearer {FINMIND_token}"} if FINMIND_token else {}
 API_URL = 'https://api.finmindtrade.com/api/v4/data'
+USER_INFO_URL = "https://api.web.finmindtrade.com/v2/user_info"
+FINMIND_USAGE_LOG_FILE = os.getenv(
+    "FINMIND_USAGE_LOG_FILE", "finmind_token_usage_log.csv")
+
 api = DataLoader()
+FINMIND_TOKEN_LOGIN_STATUS = "missing_token"
+FINMIND_TOKEN_LOGIN_MESSAGE = "FINMIND_TOKEN is not set"
+if FINMIND_token:
+    try:
+        api.login_by_token(api_token=FINMIND_token)
+        FINMIND_TOKEN_LOGIN_STATUS = "ok"
+        FINMIND_TOKEN_LOGIN_MESSAGE = "DataLoader.login_by_token succeeded"
+    except Exception as e:
+        FINMIND_TOKEN_LOGIN_STATUS = "error"
+        FINMIND_TOKEN_LOGIN_MESSAGE = str(e)
 
 _INITIAL_QUOTA_PRINTED = False
+FINMIND_API_CALL_COUNT = 0
+FINMIND_DATASET_CALL_COUNTS = {}
 
 # 停用所有來自 FinMind 的 Log 訊息
 logger.remove()
 logging.getLogger('FinMind').setLevel(logging.WARNING)
 
+
+def _mask_token(token=None):
+    """Return a safe token display value, never the full token."""
+    token = token if token is not None else FINMIND_token
+    if not token:
+        return ""
+    token = str(token)
+    if len(token) <= 8:
+        return "*" * len(token)
+    return token[:4] + "..." + token[-4:]
+
+
+def _append_finmind_usage_event(
+    event,
+    source="",
+    stock_id="",
+    dataset="",
+    status="",
+    status_code="",
+    user_count=None,
+    api_request_limit=None,
+    remain=None,
+    message="",
+):
+    """Append token/login/quota/API usage evidence to a CSV audit log."""
+    row = {
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "event": event,
+        "source": source,
+        "stock_id": stock_id,
+        "dataset": dataset,
+        "token_present": bool(FINMIND_token),
+        "token_source": FINMIND_TOKEN_SOURCE,
+        "token_masked": _mask_token(),
+        "login_status": FINMIND_TOKEN_LOGIN_STATUS,
+        "login_message": FINMIND_TOKEN_LOGIN_MESSAGE,
+        "request_count": FINMIND_API_CALL_COUNT,
+        "dataset_request_count": FINMIND_DATASET_CALL_COUNTS.get(dataset, 0),
+        "user_count": user_count,
+        "api_request_limit": api_request_limit,
+        "remain": remain,
+        "status": status,
+        "status_code": status_code,
+        "message": str(message or "")[:300],
+    }
+
+    try:
+        log_path = FINMIND_USAGE_LOG_FILE
+        exists = os.path.exists(log_path)
+        pd.DataFrame([row]).to_csv(
+            log_path,
+            mode="a",
+            header=not exists,
+            index=False,
+            encoding="utf-8-sig",
+        )
+    except Exception as e:
+        print(f"⚠️ cannot write FinMind usage log: {e}", flush=True)
+
+
+def log_finmind_static_event(event, message="", **kwargs):
+    """Public helper for generate_static_csv.py to write the same audit log."""
+    _append_finmind_usage_event(event=event, message=message, **kwargs)
+
+
+def _record_finmind_request(source, stock_id="", dataset=""):
+    """Count and log each FinMind API/DataLoader call in one place."""
+    global FINMIND_API_CALL_COUNT
+    FINMIND_API_CALL_COUNT += 1
+    FINMIND_DATASET_CALL_COUNTS[dataset] = FINMIND_DATASET_CALL_COUNTS.get(
+        dataset, 0) + 1
+
+    _append_finmind_usage_event(
+        event="api_call",
+        source=source,
+        stock_id=stock_id,
+        dataset=dataset,
+        status="sent",
+        message="FinMind request sent with token in query params and/or Authorization header",
+    )
+
+
+def get_finmind_token_status():
+    """Return local evidence that the FinMind token was loaded and DataLoader login ran."""
+    return {
+        "token_present": bool(FINMIND_token),
+        "token_source": FINMIND_TOKEN_SOURCE,
+        "token_masked": _mask_token(),
+        "login_status": FINMIND_TOKEN_LOGIN_STATUS,
+        "login_message": FINMIND_TOKEN_LOGIN_MESSAGE,
+        "request_count": FINMIND_API_CALL_COUNT,
+        "dataset_call_counts": dict(FINMIND_DATASET_CALL_COUNTS),
+        "usage_log_file": FINMIND_USAGE_LOG_FILE,
+    }
+
+
+def get_finmind_user_info(write_log=True, source="user_info"):
+    """
+    Validate the token against FinMind user_info and return usage information.
+
+    This is the strongest runtime check that the token is accepted by FinMind:
+    - token_present/token_source proves the environment variable was loaded
+    - HTTP status/body proves FinMind accepted or rejected it
+    - user_count/api_request_limit/remain shows actual account quota usage
+    """
+    if not FINMIND_token:
+        info = {
+            "ok": False,
+            "token_present": False,
+            "token_source": "",
+            "token_masked": "",
+            "login_status": FINMIND_TOKEN_LOGIN_STATUS,
+            "login_message": FINMIND_TOKEN_LOGIN_MESSAGE,
+            "user_count": None,
+            "api_request_limit": None,
+            "remain": None,
+            "status_code": None,
+            "message": "FINMIND_TOKEN is not set",
+        }
+        if write_log:
+            _append_finmind_usage_event(
+                event="token_check",
+                source=source,
+                status="missing_token",
+                message=info["message"],
+            )
+        return info
+
+    try:
+        res = requests.get(USER_INFO_URL, headers=headers, timeout=300)
+        data = _safe_response_json(res)
+        used = data.get("user_count")
+        limit = data.get("api_request_limit")
+
+        try:
+            used_int = int(used or 0)
+            limit_int = int(limit or 0)
+            remain = max(limit_int - used_int, 0) if limit_int else None
+        except Exception:
+            used_int = used
+            limit_int = limit
+            remain = None
+
+        ok = res.status_code == 200 and not data.get("error")
+        msg = data.get("msg") or data.get(
+            "message") or data.get("status") or res.text[:200]
+        info = {
+            "ok": ok,
+            "token_present": True,
+            "token_source": FINMIND_TOKEN_SOURCE,
+            "token_masked": _mask_token(),
+            "login_status": FINMIND_TOKEN_LOGIN_STATUS,
+            "login_message": FINMIND_TOKEN_LOGIN_MESSAGE,
+            "user_count": used_int,
+            "api_request_limit": limit_int,
+            "remain": remain,
+            "status_code": res.status_code,
+            "message": msg,
+        }
+
+        if write_log:
+            _append_finmind_usage_event(
+                event="token_check",
+                source=source,
+                status="ok" if ok else "error",
+                status_code=res.status_code,
+                user_count=used_int,
+                api_request_limit=limit_int,
+                remain=remain,
+                message=msg,
+            )
+        return info
+
+    except Exception as e:
+        info = {
+            "ok": False,
+            "token_present": True,
+            "token_source": FINMIND_TOKEN_SOURCE,
+            "token_masked": _mask_token(),
+            "login_status": FINMIND_TOKEN_LOGIN_STATUS,
+            "login_message": FINMIND_TOKEN_LOGIN_MESSAGE,
+            "user_count": None,
+            "api_request_limit": None,
+            "remain": None,
+            "status_code": None,
+            "message": str(e),
+        }
+        if write_log:
+            _append_finmind_usage_event(
+                event="token_check",
+                source=source,
+                status="error",
+                message=str(e),
+            )
+        return info
 
 
 def _safe_response_json(res):
@@ -71,7 +285,8 @@ def _print_api_status_error(source, stock_id, res, data=None):
     if data is None:
         data = _safe_response_json(res)
 
-    msg = data.get("msg") or data.get("message") or data.get("status") or res.text[:200]
+    msg = data.get("msg") or data.get(
+        "message") or data.get("status") or res.text[:200]
     print(
         f"❌ {source} API error {stock_id}: "
         f"status_code={res.status_code}, msg={msg}"
@@ -84,9 +299,11 @@ def get_stock_data(stock_id):
             'dataset': 'TaiwanStockPrice',
             'data_id': str(stock_id),
             'start_date': '2023-01-01',
-            'token': API_TOKEN,
+            'token': FINMIND_token,
         }
-        res = requests.get(API_URL, params=params, timeout=300)
+        _record_finmind_request("get_stock_data", stock_id, "TaiwanStockPrice")
+        res = requests.get(API_URL, params=params,
+                           headers=headers, timeout=300)
         data = _safe_response_json(res)
         _print_initial_quota_once(data, res)
 
@@ -143,10 +360,13 @@ def get_revenue_raw(stock_id):
             'dataset': 'TaiwanStockMonthRevenue',  # 🔥 月營收
             'data_id': stock_id,
             'start_date': '2022-01-01',
-            'token': API_TOKEN,
+            'token': FINMIND_token,
         }
 
-        res = requests.get(API_URL, params=params, timeout=300)
+        _record_finmind_request(
+            "revenue source", stock_id, "TaiwanStockMonthRevenue")
+        res = requests.get(API_URL, params=params,
+                           headers=headers, timeout=300)
         res_data = _safe_response_json(res)
         _print_initial_quota_once(res_data, res)
 
@@ -164,6 +384,8 @@ def get_revenue_raw(stock_id):
 
 def get_profit_ratio(stock_id):
     try:
+        _record_finmind_request("profit source", stock_id,
+                                "TaiwanStockFinancialStatement:DataLoader")
         df = api.taiwan_stock_financial_statement(
             stock_id=stock_id,
             start_date='2022-01-01',
@@ -180,9 +402,12 @@ def get_eps_raw(stock_id):
             'dataset': 'TaiwanStockFinancialStatements',
             'data_id': stock_id,
             'start_date': '2020-01-01',
-            'token': API_TOKEN,
+            'token': FINMIND_token,
         }
-        res = requests.get(API_URL, params=params, timeout=300)
+        _record_finmind_request("EPS source", stock_id,
+                                "TaiwanStockFinancialStatements")
+        res = requests.get(API_URL, params=params,
+                           headers=headers, timeout=300)
         data = _safe_response_json(res)
         _print_initial_quota_once(data, res)
 
@@ -202,9 +427,12 @@ def get_dividend_raw(stock_id):
             'dataset': 'TaiwanStockDividend',
             'data_id': stock_id,
             'start_date': '2020-01-01',
-            'token': API_TOKEN,
+            'token': FINMIND_token,
         }
-        res = requests.get(API_URL, params=params, timeout=300)
+        _record_finmind_request(
+            "dividend source", stock_id, "TaiwanStockDividend")
+        res = requests.get(API_URL, params=params,
+                           headers=headers, timeout=300)
         data = _safe_response_json(res)
         _print_initial_quota_once(data, res)
 
@@ -223,9 +451,11 @@ def get_per_raw(stock_id):
             'dataset': 'TaiwanStockPER',
             'data_id': stock_id,
             'start_date': '2023-01-01',
-            'token': API_TOKEN,
+            'token': FINMIND_token,
         }
-        res = requests.get(API_URL, params=params, timeout=300)
+        _record_finmind_request("PER source", stock_id, "TaiwanStockPER")
+        res = requests.get(API_URL, params=params,
+                           headers=headers, timeout=300)
         data = _safe_response_json(res)
         _print_initial_quota_once(data, res)
 
@@ -260,10 +490,12 @@ def get_per_pbr_90d_stats(stock_id, days=90):
             "dataset": "TaiwanStockPER",
             "data_id": str(stock_id),
             "start_date": start_date,
-            "token": API_TOKEN,
+            "token": FINMIND_token,
         }
 
-        res = requests.get(API_URL, params=params, timeout=300)
+        _record_finmind_request("PER/PBR 90D", stock_id, "TaiwanStockPER")
+        res = requests.get(API_URL, params=params,
+                           headers=headers, timeout=300)
         res_data = _safe_response_json(res)
         _print_initial_quota_once(res_data, res)
 
