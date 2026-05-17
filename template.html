@@ -470,6 +470,11 @@
           <select class="filter-op"><option value=">">&gt;</option><option value="<">&lt;</option></select>
           <input class="filter-value" type="number" step="any" placeholder="%">
         </div>
+        <div class="filter-item" data-field="bias18" data-label="日Bbias18">
+          <label>日Bbias18</label>
+          <select class="filter-op"><option value=">">&gt;</option><option value="<">&lt;</option></select>
+          <input class="filter-value" type="number" step="any" placeholder="%">
+        </div>
         <div class="filter-item" data-field="volume" data-label="日成交量">
           <label>日成交量</label>
           <select class="filter-op"><option value=">">&gt;</option><option value="<">&lt;</option></select>
@@ -641,7 +646,7 @@
           <div class="table-lv1 ${chgClass}">${chgSign}${fmt(s.chg)}</div>
             <div class="table-lv2">${fmt(s.price_min)}</div>
             <div class="table-lv2">${fmt(s.price_max)}</div>
-            <div class="table-lv3">(${(Number(s.price_max ?? 0) - Number(s.price_min ?? 0)).toFixed(2)})</div>            
+            <div class="table-lv2">(${(Number(s.price_max ?? 0) - Number(s.price_min ?? 0)).toFixed(2)})</div>            
         </td>
         
         <td class="col-md">
@@ -722,7 +727,7 @@
             <div class="sig ${s.sig == 1 ? 'up' : s.sig == -1 ? 'dn' : 'watch'}">${s.signal ?? '等待觀察'}</div>                 
               <div class="table-lv2">${s.signal_text ?? ""}</div>
               <div class="table-lv3">${s.entry_note ? s.entry_note : ""}</div>
-              <div class="table-lv3">${s.reason ?? ""}</div>          
+              <div class="table-lv2">${s.reason ?? ""}</div>          
           </div>
         </td>
 
