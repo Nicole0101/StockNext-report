@@ -1,26 +1,39 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import inspect
+import io
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Any
 
 import pandas as pd
 
+# Reduce noisy third-party logs as early as possible.
+os.environ.setdefault("LOGURU_LEVEL", "WARNING")
+try:
+    from loguru import logger
+    logger.remove()
+    logger.add(sys.stderr, level="WARNING")
+except Exception:
+    pass
+
 try:
     import config  # type: ignore
 except Exception:
     config = None
 
-from data_sources import (
+from data_sources import (  # noqa: E402
     get_chip_analysis,
     get_finmind_token_status,
     get_finmind_user_info,
     log_finmind_static_event,
 )
 
+SCRIPT_VERSION = "chips-static-v20260531-new-args-parallel-001"
 DEFAULT_OUTPUT_FILE = "AllStatic_Chips.csv"
 
 CHIP_DATA_COLS = [
@@ -55,6 +68,13 @@ ORDERED_COLS = ["stock_id", "name"] + CHIP_DATA_COLS + [
 ] + FINMIND_META_COLS
 
 _LAST_FINMIND_USAGE_INFO: dict | None = None
+
+NOISY_LOG_PATTERNS = (
+    "chip analysis request:",
+    "chip analysis response status:",
+    "FinMind API 起始剩餘次數",
+    "Login success",
+)
 
 
 def now_utc_str() -> str:
@@ -135,18 +155,15 @@ def apply_finmind_usage_to_row(row: dict, info: dict | None = None) -> dict:
 
 
 def get_finmind_usage(write_log: bool = False) -> dict:
-    """Check token/quota once. Default avoids writing extra audit rows."""
     global _LAST_FINMIND_USAGE_INFO
     info = get_finmind_user_info(write_log=write_log, source="generate_static_chips")
     _LAST_FINMIND_USAGE_INFO = info
-    used = info.get("user_count")
-    limit = info.get("api_request_limit")
-    remain = info.get("remain")
     print(
         "FinMind: "
         f"token={bool(info.get('token_present'))}, "
         f"login={info.get('login_status')}, "
-        f"usage={used}/{limit}, remain={remain}",
+        f"usage={info.get('user_count')}/{info.get('api_request_limit')}, "
+        f"remain={info.get('remain')}",
         flush=True,
     )
     if not info.get("ok"):
@@ -184,31 +201,56 @@ def empty_chip_row(stock: dict) -> dict:
     return row
 
 
+def _filter_noisy_output(text: str) -> str:
+    lines = []
+    for line in str(text or "").splitlines():
+        if any(pattern in line for pattern in NOISY_LOG_PATTERNS):
+            continue
+        if line.strip():
+            lines.append(line)
+    return "\n".join(lines)
+
+
+@contextlib.contextmanager
+def maybe_suppress_stdout(enabled: bool):
+    if not enabled:
+        yield
+        return
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        yield
+    filtered = _filter_noisy_output(buf.getvalue())
+    if filtered:
+        print(filtered, flush=True)
+
+
 def call_get_chip_analysis(
     stock_id: str,
     trend_days: int,
     concentration_threshold: float,
     lookback_days: int | None = None,
-    workers: int | None = None,
+    day_workers: int | None = None,
+    suppress_api_logs: bool = True,
 ) -> dict:
     kwargs = {
         "trend_days": trend_days,
         "concentration_threshold": concentration_threshold,
         "lookback_days": lookback_days,
-        "workers": workers,
+        "workers": day_workers,
     }
     kwargs = {key: value for key, value in kwargs.items() if value is not None}
 
-    try:
-        sig = inspect.signature(get_chip_analysis)
-        supported = {key: value for key, value in kwargs.items() if key in sig.parameters}
-        return get_chip_analysis(stock_id, **supported) or {}
-    except (TypeError, ValueError):
-        return get_chip_analysis(
-            stock_id,
-            trend_days=trend_days,
-            concentration_threshold=concentration_threshold,
-        ) or {}
+    with maybe_suppress_stdout(suppress_api_logs):
+        try:
+            sig = inspect.signature(get_chip_analysis)
+            supported = {key: value for key, value in kwargs.items() if key in sig.parameters}
+            return get_chip_analysis(stock_id, **supported) or {}
+        except (TypeError, ValueError):
+            return get_chip_analysis(
+                stock_id,
+                trend_days=trend_days,
+                concentration_threshold=concentration_threshold,
+            ) or {}
 
 
 def build_chip_row(
@@ -216,7 +258,8 @@ def build_chip_row(
     trend_days: int,
     concentration_threshold: float,
     lookback_days: int | None = None,
-    workers: int | None = None,
+    day_workers: int | None = None,
+    suppress_api_logs: bool = True,
 ) -> dict:
     stock_id = str(stock.get("stock_id", "")).strip()
     row = empty_chip_row(stock)
@@ -228,7 +271,8 @@ def build_chip_row(
             trend_days=trend_days,
             concentration_threshold=concentration_threshold,
             lookback_days=lookback_days,
-            workers=workers,
+            day_workers=day_workers,
+            suppress_api_logs=suppress_api_logs,
         )
         for col in CHIP_DATA_COLS:
             row[col] = chip.get(col)
@@ -301,9 +345,11 @@ def build_static_chips(
     concentration_threshold: float,
     lookback_days: int | None = None,
     workers: int = 1,
+    day_workers: int | None = None,
     sleep_sec: float = 0.0,
-    log_every: int = 10,
+    log_every: int = 25,
     verbose: bool = False,
+    suppress_api_logs: bool = True,
 ) -> pd.DataFrame:
     started = datetime.utcnow()
     token_status = get_finmind_token_status()
@@ -334,16 +380,17 @@ def build_static_chips(
     def task(item: tuple[int, dict]) -> tuple[int, dict]:
         idx, stock = item
         if sleep_sec and sleep_sec > 0:
-            # Small stagger only; do not sleep after every completed future.
             import time
             time.sleep(float(sleep_sec) * ((idx - 1) % workers))
-        return idx, build_chip_row(
+        row = build_chip_row(
             stock,
             trend_days=trend_days,
             concentration_threshold=concentration_threshold,
             lookback_days=lookback_days,
-            workers=None,
+            day_workers=day_workers,
+            suppress_api_logs=suppress_api_logs and not verbose,
         )
+        return idx, row
 
     if workers <= 1:
         for idx, stock in enumerate(stock_list, 1):
@@ -402,6 +449,7 @@ def build_static_chips(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Rebuild AllStatic_Chips.csv for broker chip data.")
+    parser.add_argument("--version", action="store_true", help="Print script version and exit.")
     parser.add_argument("--no-prompt", action="store_true", help="Accepted for workflow compatibility; no prompts are used.")
     parser.add_argument("--csv-file", default=None, help="Stock list file. Supports Ticker/Name or stock_id/name columns.")
     parser.add_argument("--output", default=None, help="Chip static output file.")
@@ -409,14 +457,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--concentration-threshold", type=float, default=None, help="Override CHIP_CONCENTRATION_THRESHOLD.")
     parser.add_argument("--lookback-days", type=int, default=None, help="Optional lookback window for implementations that support it.")
     parser.add_argument("--workers", type=int, default=None, help="Parallel stock workers. Use a small value to avoid API limits.")
+    parser.add_argument("--day-workers", type=int, default=None, help="Optional per-stock day workers if get_chip_analysis supports it.")
     parser.add_argument("--sleep-sec", type=float, default=None, help="Small request stagger between parallel tasks.")
     parser.add_argument("--log-every", type=int, default=None, help="Print one progress line every N completed stocks. 0 = only errors/no_data and final summary.")
-    parser.add_argument("--verbose", action="store_true", default=read_bool_env("CHIP_VERBOSE", False), help="Print every stock result.")
+    parser.add_argument("--verbose", action="store_true", default=read_bool_env("CHIP_VERBOSE", False), help="Print every stock/API result.")
+    parser.add_argument("--suppress-api-logs", dest="suppress_api_logs", action="store_true", default=read_bool_env("CHIP_SUPPRESS_API_LOGS", True), help="Suppress noisy API request/status logs from data_sources.")
+    parser.add_argument("--no-suppress-api-logs", dest="suppress_api_logs", action="store_false", help="Show noisy API request/status logs from data_sources.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    if args.version:
+        print(SCRIPT_VERSION)
+        return
+
     csv_file = resolve_csv_file(args.csv_file)
     output_file = resolve_output_file(args.output)
     sleep_sec = args.sleep_sec if args.sleep_sec is not None else read_float(cfg("CHIP_SLEEP_SEC", 0.0), 0.0, 0.0, 10.0)
@@ -429,7 +484,8 @@ def main() -> None:
     )
     lookback_days = read_int(args.lookback_days if args.lookback_days is not None else cfg("CHIP_LOOKBACK_DAYS", 21), 21, 3, 120)
     workers = read_int(args.workers if args.workers is not None else cfg("CHIP_WORKERS", 4), 4, 1, 12)
-    log_every = read_int(args.log_every if args.log_every is not None else cfg("CHIP_LOG_EVERY", 10), 10, 0, 10000)
+    day_workers = None if args.day_workers is None else read_int(args.day_workers, 1, 1, 16)
+    log_every = read_int(args.log_every if args.log_every is not None else cfg("CHIP_LOG_EVERY", 25), 25, 0, 10000)
 
     try:
         stock_list = load_stock_list(csv_file)
@@ -444,9 +500,11 @@ def main() -> None:
         concentration_threshold=concentration_threshold,
         lookback_days=lookback_days,
         workers=workers,
+        day_workers=day_workers,
         sleep_sec=sleep_sec,
         log_every=log_every,
         verbose=bool(args.verbose),
+        suppress_api_logs=bool(args.suppress_api_logs),
     )
 
 

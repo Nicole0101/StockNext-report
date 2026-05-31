@@ -1,4 +1,4 @@
-name: Update AllStatic_Chips CSV
+name: Update Static_Chips CSV
 on:
   workflow_dispatch:
     inputs:
@@ -9,7 +9,7 @@ on:
       output_file:
         description: Chip static output file
         required: false
-        default: "AllStatic_Chips.csv"
+        default: "AllStatic_Chip.csv"
       workers:
         description: Parallel day requests per stock
         required: false
@@ -28,7 +28,7 @@ env:
   REPORT_TITLE: ${{ vars.REPORT_TITLE || '(持股)技術分析報告' }}
   OUTPUT_FILE: ${{ vars.OUTPUT_FILE || '持股' }}
   STATIC_OUTPUT_FILE: ${{ vars.STATIC_OUTPUT_FILE || 'AllStatic.csv' }}
-  STATIC_CHIP_OUTPUT_FILE: ${{ github.event.inputs.output_file || 'AllStatic_Chips.csv' }}
+  STATIC_CHIP_OUTPUT_FILE: ${{ github.event.inputs.output_file || vars.STATIC_CHIP_OUTPUT_FILE || 'AllStatic_Chip.csv' }}
   CHIP_TREND_DAYS: ${{ vars.CHIP_TREND_DAYS || '3' }}
   CHIP_CONCENTRATION_THRESHOLD: ${{ vars.CHIP_CONCENTRATION_THRESHOLD || '15' }}
   CHIP_LOOKBACK_DAYS: ${{ vars.CHIP_LOOKBACK_DAYS || '21' }}
